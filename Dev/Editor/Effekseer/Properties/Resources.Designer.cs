@@ -70,7 +70,7 @@ namespace Effekseer.Properties {
         }
         
         /// <summary>
-        ///   絶対位置 に類似しているローカライズされた文字列を検索します。
+        ///   引力 に類似しているローカライズされた文字列を検索します。
         /// </summary>
         internal static string AttractionForces {
             get {
@@ -301,6 +301,15 @@ namespace Effekseer.Properties {
         internal static string Files {
             get {
                 return ResourceManager.GetString("Files", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   ファイルビューア に類似しているローカライズされた文字列を検索します。
+        /// </summary>
+        internal static string FileViewer {
+            get {
+                return ResourceManager.GetString("FileViewer", resourceCulture);
             }
         }
         

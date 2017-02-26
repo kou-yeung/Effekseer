@@ -1,0 +1,100 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset=utf-8>
+	<title>SpawningMethod</title>
+	<link href="../base.css" rel="stylesheet" type="text/css" />
+</head>
+
+<body>
+	<div class="main">
+		<h1>SpawningMethod</h1>
+		
+		<h2>Overview</h2>
+Set parameters for specifying the position where particles are generated first.
+In addition to the influence of parent particle position on child particles, the value set here affects.
+That is, particles are generated around the position moved and rotated by the value specified by this spawning method, with the position of the parent particle as the origin.
+
+<img src="../../img/Reference/locationGene.png">
+
+		<h2>Parameter</h2>
+		
+		<h3>Set angle on spawn</h3>
+		<p>
+Specify whether the parameter of the spawning method affects not only the position but also the angle.
+For example, if you specify "sphere", the Y direction of the generated particles will be the normal direction of the sphere.
+		</p>
+
+<table>
+<tr>
+<td>Checked</td>
+<td>Unchecked</td>
+</tr>
+<tr>
+<td><img src="../../img/Reference/affect_angle.png"></td>
+<td><img src="../../img/Reference/affect_no_angle.png"></td>
+</tr>
+</table>
+
+		<h3>Method of Spawning</h3>
+		<p>
+Specify how to set the generation position.
+		</p>
+
+		<h4>Point</h4>
+		<p>
+Treats the point at the specified position as the generation position.
+		</p>
+
+	<h4>Circle</h4>
+		<p>
+Place the particles in a circle. At this time, specify the radius and rotation angle. 
+When checking "influence on generation angle" The upward direction of the particle is the circumference direction of the circle.
+		</p>
+
+		<h4>Sphere</h4>
+		<p>
+Place the particles in a spherical shape. At this time, specify the radius and rotation angle of X and Y axes. When checking "influence on generation angle"
+The Y direction of the particle is the circumference direction of the circle.
+		</p>
+
+	<h4>Model</h4>
+	<p>
+Place particles along the shape of the model for Effekseer. When checking "influence on generation angle", the Z direction of the particle is the normal direction of the model.
+	</p>
+	
+	<h5>Spawn Mode</h5>
+	<h6>Random</h6>
+	<p>
+	Place particles randomly from the surface of the model.
+	</p>
+	<img src="../../img/Reference/locationGeneModelRand.png">
+	
+	<h6>Vertex</h6>
+	<p>
+	Place particles sequentially from the top of the model.
+	</p>
+	<img src="../../img/Reference/locationGeneModelVertex.png">
+
+	<h6>Random Vertex</h6>
+	<p>
+	We randomly place particles from the top of the model.
+	</p>
+	<img src="../../img/Reference/locationGeneModelVertexRand.png">
+
+	<h6>Surface</h6>
+	<p>
+	Place the particles in order from the center of the model's face.
+	</p>
+	<img src="../../img/Reference/locationGeneModelFace.png">
+
+	<h6>Random Surface</h6>
+	<p>
+	Place particles randomly from the center of the face of the model.
+	</p>
+	<img src="../../img/Reference/locationGeneModelFaceRand.png">
+  </div>
+</body>
+
+</html>

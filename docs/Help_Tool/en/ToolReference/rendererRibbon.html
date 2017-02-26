@@ -1,0 +1,62 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset=utf-8>
+	<title>Render - Ribbon</title>
+	<link href="../base.css" rel="stylesheet" type="text/css" />
+</head>
+
+<body>
+	<div class="main">
+		<h1>Render - Ribbon</h1>
+		
+		<h2>Overview</h2>
+
+<p>
+Drawing and parameters when "Ribbon" is selected in drawing setting are explained.
+</p>
+
+<p>
+When "Ribbon" is selected, effects on continuous ribbon are drawn.
+</p>
+
+<p>
+Ribbon is not drawn for each particle, it connects all children of a certain particle and draws it.
+For example, if there are particles 1, 2, and 3 of the child of particle 0, a shape like a ribbon drawn between 1, 2, and 3 is drawn. 
+The ribbon is shaped like connecting the lines between (-0.5, 0, 0) and (0.5, 0, 0) of each particle.
+
+</p>
+
+<img src="../../img/Reference/renderRibbon.png">
+
+		<h2>パラメーター</h2>
+
+		<h3>描画順</h3>
+		<p>
+同じノードから発生するスプライト間でもどのスプライトから順番に描画するか指定します。生成順の場合、最初に生成されたのが後ろの方に、生成順の逆の場合、最初に生成されたのが前に描画されます。
+		</p>
+
+		<h3>視点追従</h3>
+		<p>
+リボンは(-0.5,0,0)と(0.5,0,0)の間の線を繋げた形状になりますが、それを回転させて視点側に向けるかどうかを指定します。
+		</p>
+
+		<h3>全体色</h3>
+		<p>
+リボンの全体の色を指定します。
+		</p>
+
+		<h3>頂点色</h3>
+		<p>
+リボンの各頂点の色を指定します。
+		</p>
+
+		<h3>頂点座標</h3>
+		<p>
+リボンの各頂点の座標を指定します。ここではX座標しか指定できません。
+		</p>
+	</div>
+</body>
+
+</html>
