@@ -27,24 +27,34 @@ typedef ::Effekseer::RibbonRenderer::NodeParameter efkRibbonNodeParam;
 typedef ::Effekseer::RibbonRenderer::InstanceParameter efkRibbonInstanceParam;
 typedef ::Effekseer::Vector3D efkVector3D;
 
+template<typename RENDERER, typename VERTEX_NORMAL, typename VERTEX_DISTORTION>
 class RibbonRendererBase
 	: public ::Effekseer::RibbonRenderer
 {
 protected:
+	RENDERER*						m_renderer;
 	int32_t							m_ribbonCount;
 
 	int32_t							m_ringBufferOffset;
 	uint8_t*						m_ringBufferData;
 
-	RibbonRendererBase();
 public:
 
-	virtual ~RibbonRendererBase();
+	RibbonRendererBase(RENDERER* renderer)
+		: m_renderer(renderer)
+		, m_ribbonCount(0)
+		, m_ringBufferOffset(0)
+		, m_ringBufferData(NULL)
+	{
+	}
+
+	virtual ~RibbonRendererBase()
+	{
+	}
 
 
 protected:
 
-	template<typename RENDERER, typename VERTEX>
 	void BeginRendering_(RENDERER* renderer, int32_t count, const efkRibbonNodeParam& param)
 	{
 		m_ribbonCount = 0;
@@ -83,20 +93,19 @@ protected:
 		renderer->GetStandardRenderer()->BeginRenderingAndRenderingIfRequired(vertexCount, m_ringBufferOffset, (void*&) m_ringBufferData);
 	}
 
-	template<typename VERTEX, typename VERTEX_DISTORTION>
 	void Rendering_(const efkRibbonNodeParam& parameter, const efkRibbonInstanceParam& instanceParameter, void* userData, const ::Effekseer::Matrix44& camera)
 	{
 		if (parameter.Distortion)
 		{
-			Rendering_Internal<VERTEX_DISTORTION, VERTEX_DISTORTION>(parameter, instanceParameter, userData, camera);
+			Rendering_Internal<VERTEX_DISTORTION>(parameter, instanceParameter, userData, camera);
 		}
 		else
 		{
-			Rendering_Internal<VERTEX, VERTEX_DISTORTION>(parameter, instanceParameter, userData, camera);
+			Rendering_Internal<VERTEX_NORMAL>(parameter, instanceParameter, userData, camera);
 		}
 	}
 
-	template<typename VERTEX, typename VERTEX_DISTORTION>
+	template<typename VERTEX>
 	void Rendering_Internal( const efkRibbonNodeParam& parameter, const efkRibbonInstanceParam& instanceParameter, void* userData, const ::Effekseer::Matrix44& camera )
 	{
 		if( m_ringBufferData == NULL ) return;
@@ -226,11 +235,12 @@ protected:
 				else
 				{
 					Effekseer::Vector3D axisOld = axisBefore;
-					axis = (vs_[3].Pos - vs_[1].Pos);
+					axis = (vs_[5].Pos - vs_[3].Pos);
 					Effekseer::Vector3D::Normal(axis, axis);
 					axisBefore = axis;
 
 					axis = (axisBefore + axisOld) / 2.0f;
+					Effekseer::Vector3D::Normal(axis, axis);
 				}
 
 				auto tangent = vs_[1].Pos - vs_[0].Pos;
@@ -275,7 +285,6 @@ protected:
 		}
 	}
 
-	template<typename RENDERER, typename TEXTURE, typename VERTEX>
 	void EndRendering_(RENDERER* renderer, const efkRibbonNodeParam& param)
 	{
 		/*
@@ -327,6 +336,28 @@ protected:
 		renderer->GetRenderState()->Pop();
 		*/
 	}
+
+public:
+
+	void BeginRendering(const efkRibbonNodeParam& parameter, int32_t count, void* userData) override
+	{
+		BeginRendering_(m_renderer, count, parameter);
+	}
+
+	void Rendering(const efkRibbonNodeParam& parameter, const efkRibbonInstanceParam& instanceParameter, void* userData) override
+	{
+		Rendering_(parameter, instanceParameter, userData, m_renderer->GetCameraMatrix());
+	}
+
+	void EndRendering(const efkRibbonNodeParam& parameter, void* userData) override
+	{
+		if (m_ringBufferData == NULL) return;
+
+		if (m_ribbonCount <= 1) return;
+
+		EndRendering_(m_renderer, parameter);
+	}
+
 };
 //----------------------------------------------------------------------------------
 //

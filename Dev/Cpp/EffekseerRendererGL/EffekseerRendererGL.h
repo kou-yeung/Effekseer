@@ -44,6 +44,14 @@
 #include <GLES3/gl3.h>
 #endif
 
+#elif defined(__EFFEKSEER_RENDERER_GL2__)
+
+#if defined(__APPLE__)
+#include <OpenGL/gl.h>
+#else
+#include <GL/gl.h>
+#endif
+
 #else
 
 #if defined(__APPLE__)
@@ -139,7 +147,7 @@ public:
 	/**
 		@brief	このインスタンスを破棄する。
 	*/
-	virtual void Destory() = 0;
+	virtual void Destroy() = 0;
 
 	/**
 		@brief	ステートを復帰するかどうかのフラグを設定する。
@@ -294,6 +302,17 @@ namespace EffekseerRendererGL
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
+
+/**
+@brief	テクスチャ読込クラスを生成する。
+*/
+::Effekseer::TextureLoader* CreateTextureLoader(::Effekseer::FileInterface* fileInterface = NULL);
+
+/**
+@brief	モデル読込クラスを生成する。
+*/
+::Effekseer::ModelLoader* CreateModelLoader(::Effekseer::FileInterface* fileInterface = NULL);
+
 /**
 	@brief	描画クラス
 */

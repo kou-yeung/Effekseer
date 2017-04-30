@@ -10,13 +10,18 @@
 #include "EffekseerRendererDX9.VertexBuffer.h"
 #include "EffekseerRendererDX9.IndexBuffer.h"
 #include "EffekseerRendererDX9.DeviceObject.h"
-#include "EffekseerRendererDX9.SpriteRenderer.h"
-#include "EffekseerRendererDX9.RibbonRenderer.h"
-#include "EffekseerRendererDX9.RingRenderer.h"
+//#include "EffekseerRendererDX9.SpriteRenderer.h"
+//#include "EffekseerRendererDX9.RibbonRenderer.h"
+//#include "EffekseerRendererDX9.RingRenderer.h"
 #include "EffekseerRendererDX9.ModelRenderer.h"
-#include "EffekseerRendererDX9.TrackRenderer.h"
+//#include "EffekseerRendererDX9.TrackRenderer.h"
 #include "EffekseerRendererDX9.TextureLoader.h"
 #include "EffekseerRendererDX9.ModelLoader.h"
+
+#include "../../EffekseerRendererCommon/EffekseerRenderer.SpriteRendererBase.h"
+#include "../../EffekseerRendererCommon/EffekseerRenderer.RibbonRendererBase.h"
+#include "../../EffekseerRendererCommon/EffekseerRenderer.RingRendererBase.h"
+#include "../../EffekseerRendererCommon/EffekseerRenderer.TrackRendererBase.h"
 
 #ifdef __EFFEKSEER_RENDERER_INTERNAL_LOADER__
 #include "../../EffekseerRendererCommon/EffekseerRenderer.PngTextureLoader.h"
@@ -79,6 +84,27 @@ namespace StandardNoTexture_Distortion_PS
 {
 	static
 #include "Shader/EffekseerRenderer.StandardNoTexture_Distortion_PS.h"
+}
+
+//-----------------------------------------------------------------------------------
+//
+//-----------------------------------------------------------------------------------
+::Effekseer::TextureLoader* CreateTextureLoader(LPDIRECT3DDEVICE9 device, ::Effekseer::FileInterface* fileInterface)
+{
+#ifdef __EFFEKSEER_RENDERER_INTERNAL_LOADER__
+	return new TextureLoader(device, fileInterface);
+#else
+	return NULL;
+#endif
+}
+
+::Effekseer::ModelLoader* CreateModelLoader(LPDIRECT3DDEVICE9 device, ::Effekseer::FileInterface* fileInterface)
+{
+#ifdef __EFFEKSEER_RENDERER_INTERNAL_LOADER__
+	return new ModelLoader(device, fileInterface);
+#else
+	return NULL;
+#endif
 }
 
 //----------------------------------------------------------------------------------
@@ -361,7 +387,7 @@ bool RendererImplemented::Initialize( LPDIRECT3DDEVICE9 device )
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
-void RendererImplemented::Destory()
+void RendererImplemented::Destroy()
 {
 	Release();
 }
@@ -617,7 +643,7 @@ void RendererImplemented::SetCameraMatrix( const ::Effekseer::Matrix44& mat )
 //----------------------------------------------------------------------------------
 ::Effekseer::SpriteRenderer* RendererImplemented::CreateSpriteRenderer()
 {
-	return SpriteRenderer::Create( this );
+	return new ::EffekseerRenderer::SpriteRendererBase<RendererImplemented, Vertex, VertexDistortion>(this);
 }
 
 //----------------------------------------------------------------------------------
@@ -625,7 +651,7 @@ void RendererImplemented::SetCameraMatrix( const ::Effekseer::Matrix44& mat )
 //----------------------------------------------------------------------------------
 ::Effekseer::RibbonRenderer* RendererImplemented::CreateRibbonRenderer()
 {
-	return RibbonRenderer::Create( this );
+	return new ::EffekseerRenderer::RibbonRendererBase<RendererImplemented, Vertex, VertexDistortion>( this );
 }
 
 //----------------------------------------------------------------------------------
@@ -633,7 +659,7 @@ void RendererImplemented::SetCameraMatrix( const ::Effekseer::Matrix44& mat )
 //----------------------------------------------------------------------------------
 ::Effekseer::RingRenderer* RendererImplemented::CreateRingRenderer()
 {
-	return RingRenderer::Create( this );
+	return new ::EffekseerRenderer::RingRendererBase<RendererImplemented, Vertex, VertexDistortion>(this);
 }
 
 //----------------------------------------------------------------------------------
@@ -649,7 +675,7 @@ void RendererImplemented::SetCameraMatrix( const ::Effekseer::Matrix44& mat )
 //----------------------------------------------------------------------------------
 ::Effekseer::TrackRenderer* RendererImplemented::CreateTrackRenderer()
 {
-	return TrackRenderer::Create( this );
+	return new ::EffekseerRenderer::TrackRendererBase<RendererImplemented, Vertex, VertexDistortion>(this);
 }
 
 //----------------------------------------------------------------------------------
@@ -658,7 +684,7 @@ void RendererImplemented::SetCameraMatrix( const ::Effekseer::Matrix44& mat )
 ::Effekseer::TextureLoader* RendererImplemented::CreateTextureLoader( ::Effekseer::FileInterface* fileInterface )
 {
 #ifdef __EFFEKSEER_RENDERER_INTERNAL_LOADER__
-	return new TextureLoader( this, fileInterface );
+	return new TextureLoader(GetDevice(), fileInterface );
 #else
 	return NULL;
 #endif
@@ -670,7 +696,7 @@ void RendererImplemented::SetCameraMatrix( const ::Effekseer::Matrix44& mat )
 ::Effekseer::ModelLoader* RendererImplemented::CreateModelLoader( ::Effekseer::FileInterface* fileInterface )
 {
 #ifdef __EFFEKSEER_RENDERER_INTERNAL_LOADER__
-	return new ModelLoader( this, fileInterface );
+	return new ModelLoader(GetDevice(), fileInterface );
 #else
 	return NULL;
 #endif

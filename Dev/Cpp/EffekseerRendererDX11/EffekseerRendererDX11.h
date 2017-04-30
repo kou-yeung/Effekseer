@@ -86,7 +86,7 @@ public:
 	/**
 		@brief	このインスタンスを破棄する。
 	*/
-	virtual void Destory() = 0;
+	virtual void Destroy() = 0;
 
 	/**
 		@brief	ステートを復帰するかどうかのフラグを設定する。
@@ -237,6 +237,18 @@ namespace EffekseerRendererDX11
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
+
+/**
+@brief	テクスチャ読込クラスを生成する。
+*/
+::Effekseer::TextureLoader* CreateTextureLoader(ID3D11Device* device, ::Effekseer::FileInterface* fileInterface = NULL);
+
+/**
+@brief	モデル読込クラスを生成する。
+*/
+::Effekseer::ModelLoader* CreateModelLoader(ID3D11Device* device, ::Effekseer::FileInterface* fileInterface = NULL);
+
+
 /**
 	@brief	描画クラス
 */

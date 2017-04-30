@@ -62,6 +62,15 @@ void EffectNodeImplemented::LoadParameter(unsigned char*& pos, EffectNode* paren
 	}
 	else
 	{
+		if (m_effect->GetVersion() >= 10)
+		{
+			int32_t rendered = 0;
+			memcpy(&rendered, pos, sizeof(int32_t));
+			pos += sizeof(int32_t);
+
+			IsRendered = rendered != 0;
+		}
+
 		memcpy( &size, pos, sizeof(int) );
 		pos += sizeof(int);
 
@@ -339,7 +348,7 @@ void EffectNodeImplemented::LoadParameter(unsigned char*& pos, EffectNode* paren
 
 		/* 生成位置拡大処理*/
 		if( m_effect->GetVersion() >= 8  
-			/* && (this->CommonValues.ScalingBindType == BindType_NotBind || parent->GetType() == EFFECT_NODE_TYPE_ROOT)*/ )
+			/* && (this->CommonValues.ScalingBindType == BindType::NotBind || parent->GetType() == EFFECT_NODE_TYPE_ROOT)*/ )
 		{
 			if( GenerationLocation.type == ParameterGenerationLocation::TYPE_POINT )
 			{
@@ -447,14 +456,14 @@ void EffectNodeImplemented::LoadParameter(unsigned char*& pos, EffectNode* paren
 
 		if( m_effect->GetVersion() >= 3)
 		{
-			Texture.load( pos, m_effect->GetVersion() );
+			RendererCommon.load( pos, m_effect->GetVersion() );
 
 			// 拡大処理
-			Texture.DistortionIntensity *= m_effect->GetMaginification();
+			RendererCommon.DistortionIntensity *= m_effect->GetMaginification();
 		}
 		else
 		{
-			Texture.reset();
+			RendererCommon.reset();
 		}
 
 		LoadRendererParameter( pos, m_effect->GetSetting() );
@@ -514,27 +523,6 @@ EffectNodeImplemented::~EffectNodeImplemented()
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
-void EffectNodeImplemented::LoadOption(uint8_t*& pos)
-{
-	int is_rendered = 0;
-	memcpy( &is_rendered, pos, sizeof(int) );
-	pos += sizeof(int);
-
-	IsRendered = is_rendered != 0;
-
-	int count = 0;
-	memcpy( &count, pos, sizeof(int) );
-	pos += sizeof(int);
-
-	for( int i = 0; i < count; i++ )
-	{
-		m_Nodes[i]->LoadOption( pos );
-	}
-}
-
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
 Effect* EffectNodeImplemented::GetEffect() const
 {
 	return m_effect;
@@ -561,27 +549,27 @@ EffectNode* EffectNodeImplemented::GetChild(int index) const
 EffectBasicRenderParameter EffectNodeImplemented::GetBasicRenderParameter()
 {
 	EffectBasicRenderParameter param;
-	param.ColorTextureIndex = Texture.ColorTextureIndex;
-	param.AlphaBlend = Texture.AlphaBlend;
-	param.Distortion = Texture.Distortion;
-	param.DistortionIntensity = Texture.DistortionIntensity;
-	param.FilterType = Texture.FilterType;
-	param.WrapType = Texture.WrapType;
-	param.ZTest = Texture.ZTest;
-	param.ZWrite = Texture.ZWrite;
+	param.ColorTextureIndex = RendererCommon.ColorTextureIndex;
+	param.AlphaBlend = RendererCommon.AlphaBlend;
+	param.Distortion = RendererCommon.Distortion;
+	param.DistortionIntensity = RendererCommon.DistortionIntensity;
+	param.FilterType = RendererCommon.FilterType;
+	param.WrapType = RendererCommon.WrapType;
+	param.ZTest = RendererCommon.ZTest;
+	param.ZWrite = RendererCommon.ZWrite;
 	return param;
 }
 
 void EffectNodeImplemented::SetBasicRenderParameter(EffectBasicRenderParameter param)
 {
-	Texture.ColorTextureIndex = param.ColorTextureIndex;
-	Texture.AlphaBlend = param.AlphaBlend;
-	Texture.Distortion = param.Distortion;
-	Texture.DistortionIntensity = param.DistortionIntensity;
-	Texture.FilterType = param.FilterType;
-	Texture.WrapType = param.WrapType;
-	Texture.ZTest = param.ZTest;
-	Texture.ZWrite = param.ZWrite;
+	RendererCommon.ColorTextureIndex = param.ColorTextureIndex;
+	RendererCommon.AlphaBlend = param.AlphaBlend;
+	RendererCommon.Distortion = param.Distortion;
+	RendererCommon.DistortionIntensity = param.DistortionIntensity;
+	RendererCommon.FilterType = param.FilterType;
+	RendererCommon.WrapType = param.WrapType;
+	RendererCommon.ZTest = param.ZTest;
+	RendererCommon.ZWrite = param.ZWrite;
 }
 
 //----------------------------------------------------------------------------------
@@ -652,26 +640,26 @@ float EffectNodeImplemented::GetFadeAlpha(const Instance& instance)
 {
 	float alpha = 1.0f;
 
-	if( Texture.FadeInType == ParameterTexture::FADEIN_ON && instance.m_LivingTime < Texture.FadeIn.Frame )
+	if( RendererCommon.FadeInType == ParameterRendererCommon::FADEIN_ON && instance.m_LivingTime < RendererCommon.FadeIn.Frame )
 	{
 		float v = 1.0f;
-		Texture.FadeIn.Value.setValueToArg( 
+		RendererCommon.FadeIn.Value.setValueToArg( 
 			v,
 			0.0f,
 			1.0f,
-			(float)instance.m_LivingTime / (float)Texture.FadeIn.Frame );
+			(float)instance.m_LivingTime / (float)RendererCommon.FadeIn.Frame );
 
 		alpha *= v;
 	}
 
-	if( Texture.FadeOutType == ParameterTexture::FADEOUT_ON && instance.m_LivingTime + Texture.FadeOut.Frame > instance.m_LivedTime )
+	if( RendererCommon.FadeOutType == ParameterRendererCommon::FADEOUT_ON && instance.m_LivingTime + RendererCommon.FadeOut.Frame > instance.m_LivedTime )
 	{
 		float v = 1.0f;
-		Texture.FadeOut.Value.setValueToArg( 
+		RendererCommon.FadeOut.Value.setValueToArg( 
 			v,
 			1.0f,
 			0.0f,
-			(float)( instance.m_LivingTime + Texture.FadeOut.Frame - instance.m_LivedTime ) / (float)Texture.FadeOut.Frame );
+			(float)( instance.m_LivingTime + RendererCommon.FadeOut.Frame - instance.m_LivedTime ) / (float)RendererCommon.FadeOut.Frame );
 
 		alpha *= v;
 	}

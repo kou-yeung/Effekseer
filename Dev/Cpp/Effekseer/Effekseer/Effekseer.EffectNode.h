@@ -23,14 +23,12 @@ namespace Effekseer
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
-enum BindType
+enum class BindType : int32_t
 {
-	BindType_NotBind = 0,
-	BindType_NotBind_Root = 3,
-	BindType_WhenCreating = 1,
-	BindType_Always = 2,
-
-	BindType_DWORD = 0x7fffffff,
+	NotBind = 0,
+	NotBind_Root = 3,
+	WhenCreating = 1,
+	Always = 2,
 };
 
 //----------------------------------------------------------------------------------
@@ -404,17 +402,14 @@ struct ParameterGenerationLocation
 	}
 };
 
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
-struct ParameterTexture
+struct ParameterRendererCommon
 {
 	int32_t				ColorTextureIndex;
-	AlphaBlendType	AlphaBlend;
+	AlphaBlendType		AlphaBlend;
 
 	TextureFilterType	FilterType;
 
-	TextureWrapType	WrapType;
+	TextureWrapType		WrapType;
 
 	bool				ZWrite;
 
@@ -423,6 +418,8 @@ struct ParameterTexture
 	bool				Distortion;
 
 	float				DistortionIntensity;
+	
+	BindType			ColorBindType;
 
 	enum
 	{
@@ -501,12 +498,12 @@ struct ParameterTexture
 
 	void reset()
 	{
-		memset( this, 0, sizeof(ParameterTexture) );
+		memset( this, 0, sizeof(ParameterRendererCommon) );
 	}
 
 	void load( uint8_t*& pos, int32_t version )
 	{
-		memset( this, 0, sizeof(ParameterTexture) );
+		memset( this, 0, sizeof(ParameterRendererCommon) );
 
 		memcpy( &ColorTextureIndex, pos, sizeof(int) );
 		pos += sizeof(int);
@@ -577,6 +574,16 @@ struct ParameterTexture
 		{
 			memcpy( &UV.Scroll, pos, sizeof(UV.Scroll) );
 			pos += sizeof(UV.Scroll);
+		}
+
+		if (version >= 10)
+		{
+			memcpy(&ColorBindType, pos, sizeof(int32_t));
+			pos += sizeof(int32_t);
+		}
+		else
+		{
+			ColorBindType = BindType::NotBind;
 		}
 
 		if (version >= 9)
@@ -683,7 +690,12 @@ protected:
 public:
 
 	/**
-		@brief	描画するか?
+		@brief	\~english Whether to draw the node.
+				\~japanese このノードを描画するか?
+
+		@note
+		\~english 普通は描画されないノードは、描画の種類が変更されて、描画しないノードになる。ただし、色の継承をする場合、描画のみを行わないノードになる。
+		\~japanese For nodes that are not normally rendered, the rendering type is changed to become a node that does not render. However, when color inheritance is done, it becomes a node which does not perform drawing only.
 	*/
 	bool IsRendered;
 
@@ -716,17 +728,12 @@ public:
 
 	ParameterGenerationLocation	GenerationLocation;
 
-	ParameterTexture			Texture;
+	ParameterRendererCommon		RendererCommon;
 
 	ParameterSoundType			SoundType;
 	ParameterSound				Sound;
 
 	eRenderingOrder				RenderingOrder;
-
-	/**
-		@biref	オプション読み込み
-	*/
-	void LoadOption( uint8_t*& pos );
 
 	Effect* GetEffect() const override;
 
