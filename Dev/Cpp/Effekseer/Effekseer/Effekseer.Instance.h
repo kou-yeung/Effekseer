@@ -209,11 +209,32 @@ public:
 	// 生成されてからの時間
 	float		m_LivingTime;
 
-	/* 生成された子の個数 */
-	int32_t		m_generatedChildrenCount[ChildrenMax];
+	// The time offset for UV
+	int32_t		uvTimeOffset;
 
-	/* 次に子を生成する時間 */
-	float		m_nextGenerationTime[ChildrenMax];
+	// Scroll area for UV
+	RectF		uvScrollArea;
+
+	// Scroll speed for UV
+	Vector2D	uvScrollSpeed;
+
+	// The number of generated chiledren. (fixed size)
+	int32_t		m_fixedGeneratedChildrenCount[ChildrenMax];
+
+	// The time to generate next child.  (fixed size)
+	float		m_fixedNextGenerationTime[ChildrenMax];
+
+	// The number of generated chiledren. (flexible size)
+	int32_t*		m_flexibleGeneratedChildrenCount;
+
+	// The time to generate next child.  (flexible size)
+	float*		m_flexibleNextGenerationTime;
+
+	// The number of generated chiledren. (actually used)
+	int32_t*		m_generatedChildrenCount;
+
+	// The time to generate next child.  (actually used)
+	float*			m_nextGenerationTime;
 
 	// 生成位置
 	Matrix43		m_GenerationLocation;

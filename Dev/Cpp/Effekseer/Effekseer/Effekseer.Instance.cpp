@@ -21,18 +21,24 @@ namespace Effekseer
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
-Instance::Instance( Manager* pManager, EffectNode* pEffectNode, InstanceContainer* pContainer )
-	: m_pManager			( pManager )
-	, m_pEffectNode((EffectNodeImplemented*) pEffectNode)
-	, m_pContainer			( pContainer )
-	, m_headGroups		( NULL )
-	, m_pParent			( NULL )
-	, m_State			( INSTANCE_STATE_ACTIVE )
-	, m_LivedTime		( 0 )
-	, m_LivingTime		( 0 )
-	, m_stepTime		( false )
-	, m_sequenceNumber	( 0 )
+Instance::Instance(Manager* pManager, EffectNode* pEffectNode, InstanceContainer* pContainer)
+	: m_pManager(pManager)
+	, m_pEffectNode((EffectNodeImplemented*)pEffectNode)
+	, m_pContainer(pContainer)
+	, m_headGroups(NULL)
+	, m_pParent(NULL)
+	, m_State(INSTANCE_STATE_ACTIVE)
+	, m_LivedTime(0)
+	, m_LivingTime(0)
+	, uvTimeOffset(0)
+	, m_stepTime(false)
+	, m_sequenceNumber(0)
+	, m_flexibleGeneratedChildrenCount(nullptr)
+	, m_flexibleNextGenerationTime(nullptr)
 {
+	m_generatedChildrenCount = m_fixedGeneratedChildrenCount;
+	m_nextGenerationTime = m_fixedNextGenerationTime;
+	
 	ColorInheritance.r = 255;
 	ColorInheritance.g = 255;
 	ColorInheritance.b = 255;
@@ -68,6 +74,18 @@ Instance::Instance( Manager* pManager, EffectNode* pEffectNode, InstanceContaine
 Instance::~Instance()
 {
 	assert( m_State != INSTANCE_STATE_ACTIVE );
+
+	auto parameter = (EffectNodeImplemented*)m_pEffectNode;
+
+	if (m_flexibleGeneratedChildrenCount != nullptr)
+	{
+		m_pManager->GetFreeFunc()(m_flexibleGeneratedChildrenCount, sizeof(int32_t) * parameter->GetChildrenCount());
+	}
+
+	if (m_flexibleNextGenerationTime != nullptr)
+	{
+		m_pManager->GetFreeFunc()(m_flexibleNextGenerationTime, sizeof(float) * parameter->GetChildrenCount());
+	}
 }
 
 //----------------------------------------------------------------------------------
@@ -93,11 +111,21 @@ void Instance::Initialize( Instance* parent, int32_t instanceNumber )
 {
 	auto parameter = (EffectNodeImplemented*) m_pEffectNode;
 
+	// Extend array
+	if (parameter->GetChildrenCount() >= ChildrenMax)
+	{
+		m_flexibleGeneratedChildrenCount = (int32_t*)(m_pManager->GetMallocFunc()(sizeof(int32_t) * parameter->GetChildrenCount()));
+		m_flexibleNextGenerationTime = (float*)(m_pManager->GetMallocFunc()(sizeof(float) * parameter->GetChildrenCount()));
+
+		m_generatedChildrenCount = m_flexibleGeneratedChildrenCount;
+		m_nextGenerationTime = m_flexibleNextGenerationTime;
+	}
+
 	// 親の設定
 	m_pParent = parent;
 
 	// 子の初期化
-	for (int32_t i = 0; i < Min(ChildrenMax, parameter->GetChildrenCount()); i++)
+	for (int32_t i = 0; i < parameter->GetChildrenCount(); i++)
 	{
 		auto pNode = (EffectNodeImplemented*) parameter->GetChild(i);
 
@@ -322,6 +350,49 @@ void Instance::Initialize( Instance* parent, int32_t instanceNumber )
 		vector3d p = m_pEffectNode->GenerationLocation.point.location.getValue( *m_pManager );
 		m_GenerationLocation.Translation( p.x, p.y, p.z );
 	}
+	else if (m_pEffectNode->GenerationLocation.type == ParameterGenerationLocation::TYPE_LINE)
+	{
+		vector3d s = m_pEffectNode->GenerationLocation.line.position_start.getValue(*m_pManager);
+		vector3d e = m_pEffectNode->GenerationLocation.line.position_end.getValue(*m_pManager);
+		auto noize = Max(1, m_pEffectNode->GenerationLocation.line.position_noize.getValue(*m_pManager));
+		auto division = m_pEffectNode->GenerationLocation.line.division;
+
+		Vector3D dir;
+		(e - s).setValueToArg(dir);
+
+		if (Vector3D::LengthSq(dir) < 0.001)
+		{
+			m_GenerationLocation.Translation(0 ,0, 0);
+		}
+		else
+		{
+			auto len = Vector3D::Length(dir);
+			dir /= len;
+		
+			int32_t target = 0;
+			if (m_pEffectNode->GenerationLocation.line.type == ParameterGenerationLocation::LineType::Order)
+			{
+				target = instanceNumber % division;
+			}
+			else if (m_pEffectNode->GenerationLocation.line.type == ParameterGenerationLocation::LineType::Random)
+			{
+				RandFunc randFunc = m_pManager->GetRandFunc();
+				int32_t randMax = m_pManager->GetRandMax();
+
+				target = (int32_t)((division) * ((float)randFunc() / (float)randMax));
+				if (target == division) division -= 1;
+			}
+
+			auto d = (len / (float)division) * target;
+			d += noize;
+		
+			s.x += dir.X * d;
+			s.y += dir.Y * d;
+			s.z += dir.Z * d;
+
+			m_GenerationLocation.Translation(s.x, s.y, s.z);
+		}
+	}
 	else if( m_pEffectNode->GenerationLocation.type == ParameterGenerationLocation::TYPE_SPHERE )
 	{
 		Matrix43 mat_x, mat_y;
@@ -429,16 +500,53 @@ void Instance::Initialize( Instance* parent, int32_t instanceNumber )
 		}
 
 		float angle = (end - start) * ((float)target / (float)div) + start;
-		Matrix43 mat;
-		mat.RotationZ( angle );
 
-		m_GenerationLocation.Translation( 0, radius, 0 );
+		angle += m_pEffectNode->GenerationLocation.circle.angle_noize.getValue(*m_pManager);
+
+		Matrix43 mat;
+		if (m_pEffectNode->GenerationLocation.circle.axisDirection == ParameterGenerationLocation::AxisType::X)
+		{
+			mat.RotationX(angle);
+			m_GenerationLocation.Translation(0, 0, radius);
+		}
+		if (m_pEffectNode->GenerationLocation.circle.axisDirection == ParameterGenerationLocation::AxisType::Y)
+		{
+			mat.RotationY(angle);
+			m_GenerationLocation.Translation(radius, 0, 0);
+		}
+		if (m_pEffectNode->GenerationLocation.circle.axisDirection == ParameterGenerationLocation::AxisType::Z)
+		{
+			mat.RotationZ(angle);
+			m_GenerationLocation.Translation(0, radius, 0);
+		}
+
+		
 		Matrix43::Multiple( m_GenerationLocation, m_GenerationLocation, mat );
 	}
 
 	if( m_pEffectNode->SoundType == ParameterSoundType_Use )
 	{
 		soundValues.delay = m_pEffectNode->Sound.Delay.getValue( *m_pManager );
+	}
+
+	// UV
+	if (m_pEffectNode->RendererCommon.UVType == ParameterRendererCommon::UV_ANIMATION)
+	{
+		uvTimeOffset = m_pEffectNode->RendererCommon.UV.Animation.StartFrame.getValue(*m_pManager);
+		uvTimeOffset *= m_pEffectNode->RendererCommon.UV.Animation.FrameLength;
+	}
+	
+	if (m_pEffectNode->RendererCommon.UVType == ParameterRendererCommon::UV_SCROLL)
+	{
+		auto xy = m_pEffectNode->RendererCommon.UV.Scroll.Position.getValue(*m_pManager);
+		auto zw = m_pEffectNode->RendererCommon.UV.Scroll.Size.getValue(*m_pManager);
+
+		uvScrollArea.X = xy.x;
+		uvScrollArea.Y = xy.y;
+		uvScrollArea.Width = zw.x;
+		uvScrollArea.Height = zw.y;
+
+		m_pEffectNode->RendererCommon.UV.Scroll.Speed.getValue(*m_pManager).setValueToArg(uvScrollSpeed);
 	}
 
 	m_pEffectNode->InitializeRenderedInstance(*this, m_pManager);
@@ -448,34 +556,41 @@ void Instance::Initialize( Instance* parent, int32_t instanceNumber )
 		InstanceGroup* group = m_headGroups;
 		bool calculateMatrix = false;
 
-		for (int32_t i = 0; i < Min(ChildrenMax, parameter->GetChildrenCount()); i++, group = group->NextUsedByInstance)
+		for (int32_t i = 0; i < parameter->GetChildrenCount(); i++, group = group->NextUsedByInstance)
 		{
 			auto node = (EffectNodeImplemented*) parameter->GetChild(i);
 			auto container = m_pContainer->GetChild(i);
 			assert(group != NULL);
 
-			if (m_nextGenerationTime[i] > 0.0f) continue;
-			if (node->CommonValues.MaxGeneration <= m_generatedChildrenCount[i]) continue;
 
-			// Create particle
-			auto newInstance = group->CreateInstance();
-			if (newInstance != nullptr)
+			while (true)
 			{
-				if (!calculateMatrix)
+				// GenerationTimeOffset can be minus value.
+				// Minus frame particles is generated simultaniously at frame 0.
+				if (node->CommonValues.MaxGeneration > m_generatedChildrenCount[i] &&
+					m_nextGenerationTime[i] <= 0.0f)
 				{
-					CalculateMatrix(0);
-					calculateMatrix = true;
+					// Create particle
+					auto newInstance = group->CreateInstance();
+					if (newInstance != nullptr)
+					{
+						if (!calculateMatrix)
+						{
+							CalculateMatrix(0);
+							calculateMatrix = true;
+						}
+
+						newInstance->Initialize(this, m_generatedChildrenCount[i]);
+					}
+
+					m_generatedChildrenCount[i]++;
+					m_nextGenerationTime[i] += Max(0.0f, node->CommonValues.GenerationTime.getValue(*m_pManager));
 				}
-
-				newInstance->Initialize(this, m_generatedChildrenCount[i]);
+				else
+				{
+					break;
+				}
 			}
-			else
-			{
-				continue;
-			}
-
-			m_generatedChildrenCount[i]++;
-			m_nextGenerationTime[i] += Max(0.0f, node->CommonValues.GenerationTime.getValue(*m_pManager));
 		}
 	}
 }
@@ -521,7 +636,7 @@ void Instance::Update( float deltaFrame, bool shown )
 			*/
 		if (m_stepTime && (originalTime <= m_LivedTime || !m_pEffectNode->CommonValues.RemoveWhenLifeIsExtinct))
 		{
-			for (int i = 0; i < Min(ChildrenMax, m_pEffectNode->GetChildrenCount()); i++)
+			for (int i = 0; i < m_pEffectNode->GetChildrenCount(); i++)
 			{
 				auto pNode = (EffectNodeImplemented*) m_pEffectNode->GetChild(i);
 
@@ -574,7 +689,7 @@ void Instance::Update( float deltaFrame, bool shown )
 	{
 		InstanceGroup* group = m_headGroups;
 
-		for (int i = 0; i < Min(ChildrenMax, m_pEffectNode->GetChildrenCount()); i++, group = group->NextUsedByInstance)
+		for (int i = 0; i < m_pEffectNode->GetChildrenCount(); i++, group = group->NextUsedByInstance)
 		{
 			auto pNode = (EffectNodeImplemented*) m_pEffectNode->GetChild(i);
 			auto pContainer = m_pContainer->GetChild( i );
@@ -637,7 +752,7 @@ void Instance::Update( float deltaFrame, bool shown )
 			int maxcreate_count = 0;
 			InstanceGroup* group = m_headGroups;
 
-			for (int i = 0; i < Min(ChildrenMax, m_pEffectNode->GetChildrenCount()); i++, group = group->NextUsedByInstance)
+			for (int i = 0; i < m_pEffectNode->GetChildrenCount(); i++, group = group->NextUsedByInstance)
 			{
 				auto child = (EffectNodeImplemented*) m_pEffectNode->GetChild(i);
 
@@ -1148,7 +1263,9 @@ RectF Instance::GetUV() const
 	}
 	else if( m_pEffectNode->RendererCommon.UVType == ParameterRendererCommon::UV_ANIMATION )
 	{
-		int32_t frameNum = (int32_t)(m_LivingTime / m_pEffectNode->RendererCommon.UV.Animation.FrameLength);
+		auto time = m_LivingTime + uvTimeOffset;
+
+		int32_t frameNum = (int32_t)(time / m_pEffectNode->RendererCommon.UV.Animation.FrameLength);
 		int32_t frameCount = m_pEffectNode->RendererCommon.UV.Animation.FrameCountX * m_pEffectNode->RendererCommon.UV.Animation.FrameCountY;
 
 		if( m_pEffectNode->RendererCommon.UV.Animation.LoopType == m_pEffectNode->RendererCommon.UV.Animation.LOOPTYPE_ONCE )
@@ -1183,11 +1300,13 @@ RectF Instance::GetUV() const
 	}
 	else if( m_pEffectNode->RendererCommon.UVType == ParameterRendererCommon::UV_SCROLL )
 	{
+		auto time = m_LivingTime + uvTimeOffset;
+
 		return RectF(
-			m_pEffectNode->RendererCommon.UV.Scroll.Position.x + m_pEffectNode->RendererCommon.UV.Scroll.Speed.x * m_LivingTime,
-			m_pEffectNode->RendererCommon.UV.Scroll.Position.y + m_pEffectNode->RendererCommon.UV.Scroll.Speed.y * m_LivingTime,
-			m_pEffectNode->RendererCommon.UV.Scroll.Position.w,
-			m_pEffectNode->RendererCommon.UV.Scroll.Position.h );
+			uvScrollArea.X + uvScrollSpeed.X * time,
+			uvScrollArea.Y + uvScrollSpeed.Y * time,
+			uvScrollArea.Width,
+			uvScrollArea.Height);
 	}
 
 	return RectF( 0.0f, 0.0f, 1.0f, 1.0f );

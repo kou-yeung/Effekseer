@@ -198,8 +198,6 @@ ModelRenderer* ModelRenderer::Create( RendererImplemented* renderer )
 		D3DDECL_END()
 	};
 
-	//ID3DXBuffer* buf = NULL;
-
 	Shader* shader_lighting_texture_normal = Shader::Create( 
 		renderer, 
 		ShaderLightingTextureNormal_::g_vs20_VS,
@@ -316,7 +314,6 @@ void ModelRenderer::EndRendering( const efkModelNodeParam& parameter, void* user
 	EndRendering_<
 		RendererImplemented,
 		Shader,
-		IDirect3DTexture9*,
 		Model,
 		true,
 		40>(

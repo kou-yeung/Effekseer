@@ -31,7 +31,7 @@ struct StandardRendererState
 	::Effekseer::CullingType			CullingType;
 	::Effekseer::TextureFilterType		TextureFilterType;
 	::Effekseer::TextureWrapType		TextureWrapType;
-	void*								TexturePtr;
+	::Effekseer::TextureData*			TexturePtr;
 
 	StandardRendererState()
 	{
@@ -44,7 +44,7 @@ struct StandardRendererState
 		CullingType = ::Effekseer::CullingType::Front;
 		TextureFilterType = ::Effekseer::TextureFilterType::Nearest;
 		TextureWrapType = ::Effekseer::TextureWrapType::Repeat;
-		TexturePtr = NULL;
+		TexturePtr = nullptr;
 	}
 
 	bool operator != (const StandardRendererState state)
@@ -62,7 +62,7 @@ struct StandardRendererState
 	}
 };
 
-template<typename RENDERER, typename SHADER, typename TEXTURE, typename VERTEX, typename VERTEX_DISTORTION>
+template<typename RENDERER, typename SHADER, typename VERTEX, typename VERTEX_DISTORTION>
 class StandardRenderer
 {
 
@@ -74,7 +74,7 @@ private:
 	SHADER*		m_shader_distortion;
 	SHADER*		m_shader_no_texture_distortion;
 
-	TEXTURE*	m_texture;
+	Effekseer::TextureData*		m_texture;
 
 	StandardRendererState		m_state;
 
@@ -142,8 +142,8 @@ public:
 	{
 		Rendering();
 
-		// 必ず次の描画で初期化される。
-		m_state.TexturePtr = (void*)0x1;
+		// It is always initialized with the next drawing.
+		m_state.TexturePtr = (Effekseer::TextureData*)0x1;
 	}
 
 	void Rendering(const Effekseer::Matrix44& mCamera, const Effekseer::Matrix44& mProj)
@@ -155,7 +155,11 @@ public:
 			auto callback = m_renderer->GetDistortingCallback();
 			if (callback != nullptr)
 			{
-				callback->OnDistorting();
+				if (!callback->OnDistorting())
+				{
+					vertexCaches.clear();
+					return;
+				}
 			}
 		}
 
@@ -174,7 +178,7 @@ public:
 
 			if (m_state.Distortion)
 			{
-				// OpenGL ES対策(OpenGL ES3.2以降でしか、頂点レイアウト可変のリングバッファを実現できないため)
+				// For OpenGL ES(Because OpenGL ES 3.2 and later can only realize a vertex layout variable ring buffer)
 				vb->Lock();
 				data = vb->GetBufferDirect(vertexCaches.size());
 				if (data == nullptr)
@@ -237,11 +241,11 @@ public:
 
 		m_renderer->BeginShader(shader_);
 
-		TEXTURE textures[2];
+		Effekseer::TextureData* textures[2];
 
 		if (m_state.TexturePtr != nullptr)
 		{
-			textures[0] = TexturePointerToTexture<TEXTURE>(m_state.TexturePtr);
+			textures[0] = m_state.TexturePtr;
 		}
 		else
 		{
