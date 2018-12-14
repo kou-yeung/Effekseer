@@ -6,6 +6,7 @@
 // Include
 //----------------------------------------------------------------------------------
 #include "EffekseerTool.Renderer.h"
+#include "../Graphics/efk.ImageRenderer.h"
 
 //-----------------------------------------------------------------------------------
 //
@@ -19,22 +20,14 @@ class Guide
 {
 private:
 	
-	struct Vertex
-	{
-		float	x;
-		float	y;
-	};
+	efk::ImageRenderer*								imageRenderer = nullptr;
 
-	EffekseerRendererDX9::RendererImplemented*			m_renderer;
-	EffekseerRendererDX9::Shader*						m_shader;
-
-	Guide( EffekseerRendererDX9::RendererImplemented* renderer, EffekseerRendererDX9::Shader* shader);
+	Guide(efk::Graphics* graphics);
 public:
 
 	virtual ~Guide();
 
-	static Guide* Create( EffekseerRendererDX9::RendererImplemented* renderer );
-
+	static Guide* Create(efk::Graphics* graphics);
 
 public:
 	void Rendering( int32_t width, int32_t height, int32_t guide_width, int32_t guide_height );

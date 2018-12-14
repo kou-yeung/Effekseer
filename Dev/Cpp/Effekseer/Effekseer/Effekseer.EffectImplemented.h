@@ -29,6 +29,7 @@ class EffectImplemented
 	, public ReferenceObject
 {
 	friend class ManagerImplemented;
+	friend class EffectNodeImplemented;
 private:
 	ManagerImplemented* m_pManager;
 
@@ -60,10 +61,16 @@ private:
 
 	std::basic_string<EFK_CHAR>		m_materialPath;
 
+	int32_t			renderingNodesCount = 0;
+	int32_t			renderingNodesThreshold = 0;
+
 	/* 拡大率 */
 	float	m_maginification;
 
 	float	m_maginificationExternal;
+
+	// default random seed
+	int32_t	m_defaultRandomSeed;
 
 	// 子ノード
 	EffectNode* m_pRoot;
@@ -88,7 +95,6 @@ private:
 
 	} Culling;
 
-
 public:
 	/**
 		@brief	生成
@@ -112,8 +118,7 @@ public:
 	// Rootの取得
 	EffectNode* GetRoot() const;
 
-	/* 拡大率の取得 */
-	float GetMaginification() const;
+	float GetMaginification() const override;
 
 	/**
 		@brief	読み込む。
@@ -124,6 +129,11 @@ public:
 		@breif	何も読み込まれていない状態に戻す
 	*/
 	void Reset();
+
+	/**
+		@brief	Compatibility for magnification.
+	*/
+	bool IsDyanamicMagnificationValid() const;
 
 private:
 	/**

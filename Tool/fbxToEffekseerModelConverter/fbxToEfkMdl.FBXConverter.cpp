@@ -144,19 +144,13 @@ namespace fbxToEfkMdl
 			switch (colors->GetReferenceMode())
 			{
 			case FbxGeometryElement::eDirect:
-				color.mRed = static_cast<uint8_t>(colors->GetDirectArray().GetAt(ctrlPointIndex)[0] * 255);
-				color.mGreen = static_cast<uint8_t>(colors->GetDirectArray().GetAt(ctrlPointIndex)[1] * 255);
-				color.mBlue = static_cast<uint8_t>(colors->GetDirectArray().GetAt(ctrlPointIndex)[2] * 255);
-				color.mAlpha = static_cast<uint8_t>(colors->GetDirectArray().GetAt(ctrlPointIndex)[3] * 255);
+				color = colors->GetDirectArray().GetAt(ctrlPointIndex);
 				break;
 
 			case FbxGeometryElement::eIndexToDirect:
 			{
 				auto id = colors->GetIndexArray().GetAt(ctrlPointIndex);
-				color.mRed = static_cast<uint8_t>(colors->GetDirectArray().GetAt(id)[0] * 255);
-				color.mGreen = static_cast<uint8_t>(colors->GetDirectArray().GetAt(id)[1] * 255);
-				color.mBlue = static_cast<uint8_t>(colors->GetDirectArray().GetAt(id)[2] * 255);
-				color.mAlpha = static_cast<uint8_t>(colors->GetDirectArray().GetAt(id)[3] * 255);
+				color = colors->GetDirectArray().GetAt(id);
 			}
 				break;
 			default:
@@ -168,18 +162,12 @@ namespace fbxToEfkMdl
 			switch (colors->GetReferenceMode())
 			{
 			case FbxGeometryElement::eDirect:
-				color.mRed = static_cast<uint8_t>(colors->GetDirectArray().GetAt(vertexID)[0] * 255);
-				color.mGreen = static_cast<uint8_t>(colors->GetDirectArray().GetAt(vertexID)[1] * 255);
-				color.mBlue = static_cast<uint8_t>(colors->GetDirectArray().GetAt(vertexID)[2] * 255);
-				color.mAlpha = static_cast<uint8_t>(colors->GetDirectArray().GetAt(vertexID)[3] * 255);
+				color = colors->GetDirectArray().GetAt(vertexID);
 				break;
 
 			case FbxGeometryElement::eIndexToDirect:
 				auto id = colors->GetIndexArray().GetAt(vertexID);
-				color.mRed = static_cast<uint8_t>(colors->GetDirectArray().GetAt(id)[0] * 255);
-				color.mGreen = static_cast<uint8_t>(colors->GetDirectArray().GetAt(id)[1] * 255);
-				color.mBlue = static_cast<uint8_t>(colors->GetDirectArray().GetAt(id)[2] * 255);
-				color.mAlpha = static_cast<uint8_t>(colors->GetDirectArray().GetAt(id)[3] * 255);
+				color = colors->GetDirectArray().GetAt(id);
 				break;
 			}
 
@@ -189,12 +177,103 @@ namespace fbxToEfkMdl
 		return color;
 	}
 
+	void FBXConverter::LoadSkin(FbxMesh* fbxMesh, std::vector<BoneConnector>& bcs, std::vector<Vertex>& vs)
+	{
+		vs.resize(fbxMesh->GetControlPointsCount());
+
+		auto skinCount = fbxMesh->GetDeformerCount(FbxDeformer::eSkin);
+
+		for (auto skinInd = 0; skinInd < skinCount; skinInd++)
+		{
+			auto skin = (FbxSkin*)fbxMesh->GetDeformer(skinInd, FbxDeformer::eSkin);
+
+			auto clusterCount = skin->GetClusterCount();
+			for (auto clusterInd = 0; clusterInd < clusterCount; clusterInd++)
+			{
+				auto cluster = skin->GetCluster(clusterInd);
+				if (cluster->GetLink() == nullptr) continue;
+
+				// ボーン取得
+				auto name = cluster->GetLink()->GetName();
+
+				FbxAMatrix m1, m2;
+				cluster->GetTransformMatrix(m1);
+				cluster->GetTransformLinkMatrix(m2);
+
+				int32_t id = bcs.size();
+
+				BoneConnector connector;
+				connector.Name = name;
+
+				auto m2_inv = m2.Inverse();
+				auto m = m2_inv * m1;
+
+				connector.OffsetMatrix = m;
+
+				bcs.push_back(connector);
+
+				auto indexCount = cluster->GetControlPointIndicesCount();
+				auto vindices = cluster->GetControlPointIndices();
+				auto vweights = cluster->GetControlPointWeights();
+
+				for (auto ind = 0; ind < indexCount; ind++)
+				{
+					Weight data;
+					data.Index = id;
+					data.Value = (float)vweights[ind];
+
+					vs[vindices[ind]].Weights.push_back(data);
+				}
+			}
+		}
+
+		// Calculate weight
+		for (auto& v : vs)
+		{
+			if (v.Weights.size() == 0)
+			{
+				Weight w;
+				w.Index = -1;
+				w.Value = 1.0;
+				v.Weights.push_back(w);
+
+				v.Weights.push_back(Weight());
+				v.Weights.push_back(Weight());
+				v.Weights.push_back(Weight());
+			}
+			else
+			{
+
+				v.Weights.push_back(Weight());
+				v.Weights.push_back(Weight());
+				v.Weights.push_back(Weight());
+
+				std::sort(v.Weights.begin(), v.Weights.end(), Weight());
+
+				float fSum = 0.0f;
+				for (auto ind = 0; ind < 4; ind++)
+				{
+					fSum += v.Weights[ind].Value;
+				}
+
+				v.Weights[0].Value += 1.0f - fSum;
+				v.Weights.resize(4);
+			}
+		}
+	}
+
 	std::shared_ptr<Mesh> FBXConverter::LoadMesh(FbxMesh* fbxMesh)
 	{
 		assert(fbxMesh->GetLayerCount() > 0);
 
 		auto node = fbxMesh->GetNode();
 		auto layer = fbxMesh->GetLayer(0);
+
+		if (layer->GetNormals() == nullptr)
+		{
+			fbxMesh->GenerateNormals(true);
+		}
+
 		auto uvs = layer->GetUVs();
 		auto vcolors = layer->GetVertexColors();
 		auto normals = layer->GetNormals();
@@ -208,7 +287,12 @@ namespace fbxToEfkMdl
 
 		std::vector<FbxFace> faces;
 
-		// ポリゴン走査
+		// Load weights
+		std::vector<BoneConnector> bcs_temp;
+		std::vector<Vertex> vs_temp;
+		LoadSkin(fbxMesh, bcs_temp, vs_temp);
+
+		// generate face vertex
 		int32_t vertexID = 0;
 		for (int32_t polygonIndex = 0; polygonIndex < polygonCount; polygonIndex++)
 		{
@@ -224,14 +308,22 @@ namespace fbxToEfkMdl
 
 				v.Position = LoadPosition(fbxMesh, ctrlPointIndex);
 				
+				v.Weights = vs_temp[ctrlPointIndex].Weights;
+
 				if (normals != nullptr)
 				{
 					v.Normal = LoadNormal(normals, vertexID, ctrlPointIndex);
 				}
-
+		
 				if (uvs != nullptr)
 				{
 					v.UV = LoadUV(fbxMesh, uvs, vertexID, ctrlPointIndex, polygonIndex, polygonPointIndex);
+				}
+				else
+				{
+					// Auto generated
+					v.UV[0] = v.Position[0] + v.Position[2];
+					v.UV[1] = v.Position[1];
 				}
 
 				if (vcolors != nullptr)
@@ -245,6 +337,8 @@ namespace fbxToEfkMdl
 
 			faces.push_back(face);
 		}
+
+
 
 		// 面の表裏入れ替え
 		for (auto& face : faces)
@@ -261,10 +355,10 @@ namespace fbxToEfkMdl
 
 		for (auto& face : faces)
 		{
-			if (face.Vertecies.size() != 3) continue;
-
-			for (auto& vertex : face.Vertecies)
+			for (int32_t vi = 0; vi < (int32_t)face.Vertecies.size(); vi++)
 			{
+				auto vertex = face.Vertecies[vi];
+
 				auto it = v2ind.find(vertex);
 				if (it == v2ind.end())
 				{
@@ -278,6 +372,7 @@ namespace fbxToEfkMdl
 		// 設定
 		auto mesh = std::make_shared<Mesh>();
 		mesh->Name = node->GetName();
+		mesh->BoneConnectors = bcs_temp;
 
 		mesh->Vertexes.resize(vInd);
 		for (auto& iv : ind2v)
@@ -287,13 +382,31 @@ namespace fbxToEfkMdl
 
 		for (auto& face : faces)
 		{
-			if (face.Vertecies.size() != 3) continue;
+			if (face.Vertecies.size() < 3) continue;
 
-			Face f;
-			f.Index[0] = v2ind[face.Vertecies[0]];
-			f.Index[1] = v2ind[face.Vertecies[1]];
-			f.Index[2] = v2ind[face.Vertecies[2]];
-			mesh->Faces.push_back(f);
+			if (face.Vertecies.size() == 3)
+			{
+				Face f;
+				f.Index[0] = v2ind[face.Vertecies[0]];
+				f.Index[1] = v2ind[face.Vertecies[1]];
+				f.Index[2] = v2ind[face.Vertecies[2]];
+				mesh->Faces.push_back(f);
+			}
+			
+			if (face.Vertecies.size() == 4)
+			{
+				Face f0;
+				f0.Index[0] = v2ind[face.Vertecies[0]];
+				f0.Index[1] = v2ind[face.Vertecies[1]];
+				f0.Index[2] = v2ind[face.Vertecies[2]];
+				mesh->Faces.push_back(f0);
+
+				Face f1;
+				f1.Index[0] = v2ind[face.Vertecies[0]];
+				f1.Index[1] = v2ind[face.Vertecies[2]];
+				f1.Index[2] = v2ind[face.Vertecies[3]];
+				mesh->Faces.push_back(f1);
+			}
 		}
 
 		// Binormal,Tangent計算
@@ -326,7 +439,7 @@ namespace fbxToEfkMdl
 		for (auto& vn : vInd2Normals)
 		{
 			mesh->Vertexes[vn.first].Binormal = vn.second.Binormal;
-			//mesh->Vertexes[vn.first].Tangent = vn.second.Tangent;
+			mesh->Vertexes[vn.first].Tangent = vn.second.Tangent;
 
 			// 適当な値を代入する
 			if (mesh->Vertexes[vn.first].Binormal.Length() == 0.0f)
@@ -334,10 +447,12 @@ namespace fbxToEfkMdl
 				if (mesh->Vertexes[vn.first].Normal != FbxVector4(1, 0, 0))
 				{
 					mesh->Vertexes[vn.first].Binormal = FbxVector4(1, 0, 0);
+					mesh->Vertexes[vn.first].Tangent = FbxVector4(0, 1, 0);
 				}
 				else
 				{
 					mesh->Vertexes[vn.first].Binormal = FbxVector4(0, 1, 0);
+					mesh->Vertexes[vn.first].Tangent = FbxVector4(1, 0, 0);
 				}
 			}
 		}
@@ -365,7 +480,12 @@ namespace fbxToEfkMdl
 				if (!mesh->IsTriangleMesh())
 				{
 					FbxGeometryConverter converter(fbxManager);
-					mesh = (FbxMesh*) converter.Triangulate(mesh, false);
+					auto mesh_tri = (FbxMesh*) converter.Triangulate(mesh, false);
+				
+					if (mesh_tri != nullptr)
+					{
+						mesh = mesh_tri;
+					}
 				}
 
 				node->MeshData = LoadMesh(mesh);
@@ -373,16 +493,36 @@ namespace fbxToEfkMdl
 			case FbxNodeAttribute::eSkeleton:
 				break;
 			default:
-				return std::shared_ptr<Node>();
 				break;
 			}
 		}
 		else
 		{
-			// ルート
+			// This is root.
 		}
 
-		// 子の走査
+		// load transforms
+		EFbxRotationOrder fbxRotationOrder;
+		fbxNode->GetRotationOrder(FbxNode::eDestinationPivot, fbxRotationOrder);
+		node->RotationOrder = fbxRotationOrder;
+
+		// default transform
+		auto lclT = fbxNode->LclTranslation.Get();
+		auto lclR = fbxNode->LclRotation.Get();
+		auto lclS = fbxNode->LclScaling.Get();
+
+		node->Translation[0] = lclT[0];
+		node->Translation[1] = lclT[1];
+		node->Translation[2] = lclT[2];
+
+		node->Rotation[0] = lclR[0];
+		node->Rotation[1] = lclR[1];
+		node->Rotation[2] = lclR[2];
+
+		node->Scaling[0] = lclS[0];
+		node->Scaling[1] = lclS[1];
+		node->Scaling[2] = lclS[2];
+
 		for (auto i = 0; i < fbxNode->GetChildCount(); i++)
 		{
 			auto childNode = LoadHierarchy(node, fbxNode->GetChild(i), fbxManager);
@@ -395,17 +535,214 @@ namespace fbxToEfkMdl
 		return node;
 	}
 
+	std::shared_ptr<KeyFrameAnimation> FBXConverter::LoadCurve(FbxAnimCurve* curve, int32_t frameStart, int32_t frameCount)
+	{
+		auto keyFrameAnimation = std::make_shared<KeyFrameAnimation>();
+		
+		for (int32_t i = 0; i < frameCount; i++)
+		{
+			FbxTime time;
+			time.SetFrame(i + frameStart, FbxTime::eFrames60);
+			auto value = curve->Evaluate(time);
+			keyFrameAnimation->Values.push_back(value);
+		}
+
+		return keyFrameAnimation;
+	}
+
+	std::vector<std::shared_ptr<KeyFrameAnimation>> FBXConverter::LoadCurve(FbxAnimLayer* fbxAnimLayer, FbxNode* fbxNode, int32_t frameStart, int32_t frameCount)
+	{
+		std::vector<std::shared_ptr<KeyFrameAnimation>> ret;
+		auto boneName = fbxNode->GetName();
+		auto transXCurve = fbxNode->LclTranslation.GetCurve(fbxAnimLayer, FBXSDK_CURVENODE_COMPONENT_X);
+		auto transYCurve = fbxNode->LclTranslation.GetCurve(fbxAnimLayer, FBXSDK_CURVENODE_COMPONENT_Y);
+		auto transZCurve = fbxNode->LclTranslation.GetCurve(fbxAnimLayer, FBXSDK_CURVENODE_COMPONENT_Z);
+
+		auto rotXCurve = fbxNode->LclRotation.GetCurve(fbxAnimLayer, FBXSDK_CURVENODE_COMPONENT_X);
+		auto rotYCurve = fbxNode->LclRotation.GetCurve(fbxAnimLayer, FBXSDK_CURVENODE_COMPONENT_Y);
+		auto rotZCurve = fbxNode->LclRotation.GetCurve(fbxAnimLayer, FBXSDK_CURVENODE_COMPONENT_Z);
+
+		auto rot = fbxNode->LclRotation.GetCurveNode(fbxAnimLayer);
+		auto lclR = fbxNode->LclRotation.Get();
+		auto defRotX = lclR[0];
+		auto defRotY = lclR[1];
+		auto defRotZ = lclR[2];
+		if (rot != nullptr)
+		{
+			for (size_t i = 0; i < rot->GetChannelsCount(); i++)
+			{
+				auto name = rot->GetChannelName(i);
+				if (name == "X")
+				{
+					defRotX = rot->GetChannelValue(name, defRotX);
+				}
+				if (name == "Y")
+				{
+					defRotY = rot->GetChannelValue(name, defRotY);
+				}
+				if (name == "Z")
+				{
+					defRotZ = rot->GetChannelValue(name, defRotZ);
+				}
+			}
+
+		}
+
+		auto sclXCurve = fbxNode->LclScaling.GetCurve(fbxAnimLayer, FBXSDK_CURVENODE_COMPONENT_X);
+		auto sclYCurve = fbxNode->LclScaling.GetCurve(fbxAnimLayer, FBXSDK_CURVENODE_COMPONENT_Y);
+		auto sclZCurve = fbxNode->LclScaling.GetCurve(fbxAnimLayer, FBXSDK_CURVENODE_COMPONENT_Z);
+
+		if (transXCurve != nullptr)
+		{
+			auto c = LoadCurve(transXCurve, frameStart, frameCount);
+			c->Name = boneName;
+			c->Target = AnimationTarget::TX;
+			ret.push_back(c);
+		}
+
+		if (transYCurve != nullptr)
+		{
+			auto c = LoadCurve(transYCurve, frameStart, frameCount);
+			c->Name = boneName;
+			c->Target = AnimationTarget::TY;
+			ret.push_back(c);
+		}
+
+		if (transZCurve != nullptr)
+		{
+			auto c = LoadCurve(transZCurve, frameStart, frameCount);
+			c->Name = boneName;
+			c->Target = AnimationTarget::TZ;
+			ret.push_back(c);
+		}
+
+		if (rotXCurve != nullptr)
+		{
+			auto c = LoadCurve(rotXCurve, frameStart, frameCount);
+			c->Name = boneName;
+			c->Target = AnimationTarget::RX;
+			ret.push_back(c);
+		}
+
+		if (rotYCurve != nullptr)
+		{
+			auto c = LoadCurve(rotYCurve, frameStart, frameCount);
+			c->Name = boneName;
+			c->Target = AnimationTarget::RY;
+			ret.push_back(c);
+		}
+
+		if (rotZCurve != nullptr)
+		{
+			auto c = LoadCurve(rotZCurve, frameStart, frameCount);
+			c->Name = boneName;
+			c->Target = AnimationTarget::RZ;
+			ret.push_back(c);
+		}
+
+		if (sclXCurve != nullptr)
+		{
+			auto c = LoadCurve(sclXCurve, frameStart, frameCount);
+			c->Name = boneName;
+			c->Target = AnimationTarget::SX;
+			ret.push_back(c);
+		}
+
+		if (sclYCurve != nullptr)
+		{
+			auto c = LoadCurve(sclYCurve, frameStart, frameCount);
+			c->Name = boneName;
+			c->Target = AnimationTarget::SY;
+			ret.push_back(c);
+		}
+
+		if (sclZCurve != nullptr)
+		{
+			auto c = LoadCurve(sclZCurve, frameStart, frameCount);
+			c->Name = boneName;
+			c->Target = AnimationTarget::SZ;
+			ret.push_back(c);
+		}
+
+		for (auto i = 0; i< fbxNode->GetChildCount(); i++)
+		{
+			auto kfas = LoadCurve(fbxAnimLayer, fbxNode->GetChild(i), frameStart, frameCount);
+
+			for (auto a : kfas)
+			{
+				ret.push_back(a);
+			}
+		}
+
+		return ret;
+	}
+
+	std::shared_ptr<AnimationClip> FBXConverter::LoadAnimation(FbxAnimStack* fbxAnimStack, FbxNode* fbxRootNode)
+	{
+		auto animClip = std::make_shared<AnimationClip>();
+
+		const int32_t layerCount = fbxAnimStack->GetMemberCount<FbxAnimLayer>();
+		if (layerCount == 0) return std::shared_ptr<AnimationClip>();
+
+		auto animationName = fbxAnimStack->GetName();
+
+		FbxTime startTime = fbxAnimStack->LocalStart;
+		FbxTime endTime = fbxAnimStack->LocalStop;
+
+		int hour, minute, second, frame, field, residual;
+		
+		startTime.GetTime(hour, minute, second, frame, field, residual, FbxTime::eFrames60);
+		auto startFrame = 60 * (hour * 60 * 60 + minute * 60 + second) + frame;
+
+		endTime.GetTime(hour, minute, second, frame, field, residual, FbxTime::eFrames60);
+		auto endFrame = 60 * (hour * 60 * 60 + minute * 60 + second) + frame;
+
+		animClip->Name = animationName;
+		animClip->StartFrame = startFrame;
+		animClip->EndFrame = endFrame;
+
+		for (auto i = 0; i < layerCount; ++i)
+		{
+			auto layer = fbxAnimStack->GetMember<FbxAnimLayer>();
+			auto kfas = LoadCurve(layer, fbxRootNode, animClip->StartFrame, animClip->EndFrame - animClip->StartFrame);
+		
+			for(auto a : kfas)
+			{
+				animClip->Animations.push_back(a);
+			}
+		}
+
+		animClip->EndFrame = animClip->EndFrame - animClip->StartFrame;
+		animClip->StartFrame = 0;
+		
+		return animClip;
+	}
+
 	std::shared_ptr<Scene> FBXConverter::LoadScene(FbxScene* fbxScene, FbxManager* fbxManager)
 	{
-		// 座標系変換
+		// convert a coordinate system
 		FbxAxisSystem axis(FbxAxisSystem::eOpenGL);
 		axis.ConvertScene(fbxScene);
 
 		auto scene = std::make_shared<Scene>();
 
-		// ノード
+		// import nodes
 		auto root = fbxScene->GetRootNode();
 		scene->Root = LoadHierarchy(nullptr, root, fbxManager);
+
+		// import animations
+		auto animStackCount = fbxScene->GetSrcObjectCount<FbxAnimStack>();
+
+		for (auto animStackIndex = 0; animStackIndex < animStackCount; animStackIndex++)
+		{
+			auto animStack = fbxScene->GetSrcObject<FbxAnimStack>(animStackIndex);
+
+			fbxScene->SetCurrentAnimationStack(animStack);
+			auto animClip = LoadAnimation(animStack, root);
+
+			if(animClip.get() == nullptr) continue;
+			scene->AnimationClips.push_back(animClip);
+		}
 
 		return scene;
 	}

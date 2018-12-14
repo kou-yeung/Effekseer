@@ -197,10 +197,12 @@ Shader::Shader(
 	}
 
 	m_vsSrc.resize(vertexShaderSize);
-	memcpy( &(m_vsSrc[0]), vs_src, vertexShaderSize );
+	memcpy(m_vsSrc.data(), vs_src, vertexShaderSize );
+	m_vsSrc.push_back(0);
 
 	m_psSrc.resize(pixelShaderSize);
-	memcpy( &(m_psSrc[0]), fs_src, pixelShaderSize );
+	memcpy(m_psSrc.data(), fs_src, pixelShaderSize );
+	m_psSrc.push_back(0);
 
 	m_name = name;
 }
@@ -276,6 +278,7 @@ Shader* Shader::Create(
 void Shader::OnLostDevice()
 {
 	GLExt::glDeleteProgram(m_program);
+	m_program = 0;
 }
 
 //----------------------------------------------------------------------------------
@@ -283,22 +286,25 @@ void Shader::OnLostDevice()
 //----------------------------------------------------------------------------------
 void Shader::OnResetDevice()
 {
+	if (IsValid()) return;
+
 	GLuint program;
 	
 	if(CompileShader(
 		GetRenderer(),
 		program,
-		(const char*)&(m_vsSrc[0]),
+		(const char*)(m_vsSrc.data()),
 		m_vsSrc.size(),
-		(const char*)&(m_psSrc[0]),
+		(const char*)(m_psSrc.data()),
 		m_psSrc.size(),
 		m_name.c_str()))
 	{
 		m_program = program;
+		GetAttribIdList(0, nullptr);
 	}
 	else
 	{
-
+		printf("Failed to reset device.\n");
 	}
 }
 
@@ -321,10 +327,11 @@ void Shader::OnChangeDevice()
 		m_name.c_str()))
 	{
 		m_program = program;
+		GetAttribIdList(0, nullptr);
 	}
 	else
 	{
-
+		printf("Failed to change device.\n");
 	}
 }
 
@@ -338,20 +345,51 @@ GLuint Shader::GetInterface() const
 
 void Shader::GetAttribIdList(int count, const ShaderAttribInfo* info )
 {
+	// TODO : refactoring
+
 	m_aid.clear();
 
-	for (int i = 0; i < count; i++)
+	if (info != nullptr)
 	{
-		m_aid.push_back( GLExt::glGetAttribLocation(m_program, info[i].name) );
-		Layout layout;
+		for (int i = 0; i < count; i++)
+		{
+			m_aid.push_back(GLExt::glGetAttribLocation(m_program, info[i].name));
+			Layout layout;
 
-		layout.normalized = info[i].normalized;
-		layout.type = info[i].type;
-		layout.offset = info[i].offset;
-		layout.count = info[i].count;
+			layout.normalized = info[i].normalized;
+			layout.type = info[i].type;
+			layout.offset = info[i].offset;
+			layout.count = info[i].count;
 
-		m_layout.push_back(layout);
+			m_layout.push_back(layout);
+		}
+
+		attribs.resize(count);
+
+		for (int i = 0; i < count; i++)
+		{
+			attribs[i].name = info[i].name;
+			attribs[i].normalized = info[i].normalized;
+			attribs[i].type = info[i].type;
+			attribs[i].offset = info[i].offset;
+			attribs[i].count = info[i].count;
+		}
 	}
+	else
+	{
+		for (int i = 0; i < attribs.size(); i++)
+		{
+			m_aid.push_back(GLExt::glGetAttribLocation(m_program, attribs[i].name.c_str()));
+			Layout layout;
+
+			layout.normalized = attribs[i].normalized;
+			layout.type = attribs[i].type;
+			layout.offset = attribs[i].offset;
+			layout.count = attribs[i].count;
+
+			m_layout.push_back(layout);
+		}
+	}	
 }
 
 void Shader::GetUniformIdList(int count, const ShaderUniformInfo* info, GLint* uid_list) const
@@ -374,6 +412,7 @@ void Shader::EndScene()
 
 void Shader::EnableAttribs()
 {
+	GLCheckError();
 	for( size_t i = 0; i < m_aid.size(); i++ )
 	{
 		if ( m_aid[i] >= 0 ) 
@@ -583,6 +622,11 @@ GLuint Shader::GetTextureSlot(int32_t index)
 bool Shader::GetTextureSlotEnable(int32_t index)
 {
 	return m_textureSlotEnables[index];
+}
+
+bool Shader::IsValid() const
+{
+	return m_program != 0;
 }
 
 //-----------------------------------------------------------------------------------

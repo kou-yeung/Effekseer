@@ -26,7 +26,7 @@ class Effect
 {
 protected:
 	Effect() {}
-    ~Effect() {}
+    virtual ~Effect() {}
 
 public:
 
@@ -83,7 +83,10 @@ public:
 	*/
 	virtual Setting* GetSetting() const = 0;
 
-	/* 拡大率を取得する。 */
+	/**
+	@brief	\~English	Get the magnification multiplied by the magnification at the time of loaded and exported.
+			\~Japanese	読み込み時と出力時の拡大率をかけた拡大率を取得する。
+	*/
 	virtual float GetMaginification() const = 0;
 	
 	/**
@@ -216,6 +219,20 @@ struct EffectBasicRenderParameter
 };
 
 /**
+@brief	
+	\~English	Model parameter
+	\~Japanese	モデルパラメーター
+@note
+	\~English	It may change greatly.
+	\~Japanese	大きく変更される可能性があります。
+
+*/
+struct EffectModelParameter
+{
+	bool				Lighting;
+};
+
+/**
 @brief	ノードインスタンス生成クラス
 @note
 エフェクトのノードの実体を生成する。
@@ -251,6 +268,12 @@ public:
 	*/
 	virtual void SetBasicRenderParameter(EffectBasicRenderParameter param) = 0;
 
+	/**
+	@brief	
+	\~English	Get a model parameter
+	\~Japanese	モデルパラメーターを取得する。
+	*/
+	virtual EffectModelParameter GetEffectModelParameter() = 0;
 };
 
 //----------------------------------------------------------------------------------

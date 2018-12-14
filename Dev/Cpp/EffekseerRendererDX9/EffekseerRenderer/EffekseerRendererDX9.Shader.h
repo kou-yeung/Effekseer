@@ -7,6 +7,7 @@
 //----------------------------------------------------------------------------------
 #include "EffekseerRendererDX9.RendererImplemented.h"
 #include "EffekseerRendererDX9.DeviceObject.h"
+#include "../../EffekseerRendererCommon/EffekseerRenderer.ShaderBase.h"
 
 //-----------------------------------------------------------------------------------
 //
@@ -18,6 +19,7 @@ namespace EffekseerRendererDX9
 //----------------------------------------------------------------------------------
 class Shader
 	: public DeviceObject
+	, public ::EffekseerRenderer::ShaderBase
 {
 private:
 	/* 再構成時の元データ保存用 */
@@ -74,8 +76,8 @@ public:
 	void* GetVertexConstantBuffer() { return m_vertexConstantBuffer; }
 	void* GetPixelConstantBuffer() { return m_pixelConstantBuffer; }
 
-	void SetVertexRegisterCount(int32_t count){ m_vertexRegisterCount = count; }
-	void SetPixelRegisterCount(int32_t count){ m_pixelRegisterCount = count; }
+	void SetVertexRegisterCount(int32_t count){ assert( count <= 256 ); m_vertexRegisterCount = count; }
+	void SetPixelRegisterCount(int32_t count){ assert( count <= 256 ); m_pixelRegisterCount = count; }
 
 	void SetConstantBuffer();
 };

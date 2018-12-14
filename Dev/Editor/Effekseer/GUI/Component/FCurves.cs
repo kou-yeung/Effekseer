@@ -21,27 +21,14 @@ namespace Effekseer.GUI.Component
 			HandleCreated += new EventHandler(FCurves_HandleCreated);
 			HandleDestroyed += new EventHandler(FCurves_HandleDestroyed);
 
-			cb_fcurveEdgeStart = new Enum<Data.Value.FCurveEdge>();
-			cb_fcurveEdgeStart.Location = new Point(lbl_start.Location.X + 30, lbl_start.Location.Y-3);
-			cb_fcurveEdgeStart.Size = new Size(40, 19);
-			cb_fcurveEdgeStart.TabIndex = 12;
-			splitContainer.Panel2.Controls.Add(cb_fcurveEdgeStart);
+			cb_fcurveEdgeStart.Initialize(typeof(Data.Value.FCurveEdge));
+			cb_fcurveEdgeEnd.Initialize(typeof(Data.Value.FCurveEdge));
+			cb_fcurveInterpolation.Initialize(typeof(Data.Value.FCurveInterpolation));
 
-			cb_fcurveEdgeEnd = new Enum<Data.Value.FCurveEdge>();
-			cb_fcurveEdgeEnd.Location = new Point(lbl_end.Location.X + 30, lbl_end.Location.Y-3);
-			cb_fcurveEdgeEnd.Size = new Size(40, 19);
-			cb_fcurveEdgeEnd.TabIndex = 13;
-			splitContainer.Panel2.Controls.Add(cb_fcurveEdgeEnd);
 
-			cb_fcurveInterpolation = new Enum<Data.Value.FCurveInterpolation>();
-			cb_fcurveInterpolation.Location = new Point(lbl_type.Location.X + 30, lbl_type.Location.Y - 3);
-			cb_fcurveInterpolation.Size = new Size(40, 19);
-			cb_fcurveInterpolation.TabIndex = 14;
-			splitContainer.Panel2.Controls.Add(cb_fcurveInterpolation);
-
-			txt_offset_max.Anchor = AnchorStyles.Left | AnchorStyles.Top;
-			txt_offset_min.Anchor = AnchorStyles.Left | AnchorStyles.Top;
-			txt_sampling.Anchor = AnchorStyles.Left | AnchorStyles.Top;
+			txt_offset_min.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Top;
+			txt_offset_max.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Top;
+			txt_sampling.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Top;
 
 			txt_frame.IsEnable = () =>
 				{
@@ -186,11 +173,20 @@ namespace Effekseer.GUI.Component
 				}
 				return 0.0f;
 			};
-		}
 
-		Enum<Data.Value.FCurveEdge> cb_fcurveEdgeStart = null;
-		Enum<Data.Value.FCurveEdge> cb_fcurveEdgeEnd = null;
-		Enum<Data.Value.FCurveInterpolation> cb_fcurveInterpolation = null;
+			lbl_frame.Text = global::Effekseer.Properties.Resources.Frame;
+			lbl_value.Text = global::Effekseer.Properties.Resources.Value;
+			lbl_start.Text = global::Effekseer.Properties.Resources.Start;
+			lbl_end.Text = global::Effekseer.Properties.Resources.End;
+			lbl_type.Text = global::Effekseer.Properties.Resources.Complement;
+			lbl_sampling.Text = global::Effekseer.Properties.Resources.Sampling;
+			lbl_left.Text = global::Effekseer.Properties.Resources.Left;
+			lbl_right.Text = global::Effekseer.Properties.Resources.Right;
+			lbl_offset.Text = global::Effekseer.Properties.Resources.Offset;
+			lbl_offset_min.Text = global::Effekseer.Properties.Resources.Min;
+			lbl_offset_max.Text = global::Effekseer.Properties.Resources.Max;
+		
+		}
 
 		Data.Value.IFCurveKey editedFCurveKey = null;
 
@@ -371,7 +367,7 @@ namespace Effekseer.GUI.Component
 				}
 			}
 
-			treeNodes.CalculatePosition();
+			treeNodes.CalculatePosition(Math.Max(0, splitContainer.Panel2.Width - 20));
 
 			paramaterTreeNode = paramTreeNodes;
 		}
@@ -526,6 +522,15 @@ namespace Effekseer.GUI.Component
 			}
 		}
 
+
+		private void splitContainer_Panel2_SizeChanged(object sender, EventArgs e)
+		{
+			if (treeNodes != null)
+			{
+				treeNodes.CalculatePosition(Math.Max(0, splitContainer.Panel2.Width - 20));
+			}
+		}
+
 		private void splitContainer_Panel2_Scroll(object sender, ScrollEventArgs e)
 		{
 			splitContainer.Panel1.Refresh();
@@ -537,7 +542,7 @@ namespace Effekseer.GUI.Component
 			{
 				if (treeNodes.ClickOnPanel(e.X, e.Y - splitContainer.Panel2.AutoScrollPosition.Y))
 				{
-					treeNodes.CalculatePosition();
+					treeNodes.CalculatePosition(Math.Max(0, splitContainer.Panel2.Width - 20));
 					splitContainer.Panel1.Refresh();
 				}
 			}
@@ -598,13 +603,13 @@ namespace Effekseer.GUI.Component
 			}
 
 			const int upperleftX = 5;
-			const int upperleftY = 30;
+			const int upperleftY = 5;
 			const int fontSize = 12;
 			const int mergin = 2;
 			const int indent = 10;
 			const int paramOffset = 25;
 
-			public void CalculatePosition()
+			public void CalculatePosition(int width)
 			{
 				int indentCount = 1;
 
@@ -616,13 +621,13 @@ namespace Effekseer.GUI.Component
 
 				foreach (var child in Children)
 				{
-					child.CalculatePosition(childY, indentCount + 1, IsExtended);
+					child.CalculatePosition(childY, indentCount + 1, IsExtended, width);
 					childY += child.Height;
 				}
 				
 			}
 
-			void CalculatePosition(int y, int indentCount, bool isParentExtended)
+			void CalculatePosition(int y, int indentCount, bool isParentExtended, int width)
 			{
 				Position = new Point(indent * indentCount, y);
 
@@ -640,7 +645,7 @@ namespace Effekseer.GUI.Component
 				foreach (var f in FCurves)
 				{
 					f.Position = new Point(paramOffset + indent * indentCount, childY);
-					f.SetSize(IsExtended && isParentExtended);
+					f.SetSize(IsExtended && isParentExtended, width);
 
 					if (IsExtended && isParentExtended)
 					{
@@ -651,7 +656,7 @@ namespace Effekseer.GUI.Component
 				
 				foreach (var child in Children)
 				{
-					child.CalculatePosition(childY, indentCount + 1, IsExtended && isParentExtended);
+					child.CalculatePosition(childY, indentCount + 1, IsExtended && isParentExtended, width);
 					Height += child.Height;
 					childY = Position.Y + Height;
 				}
@@ -811,6 +816,9 @@ namespace Effekseer.GUI.Component
 			/// </summary>
 			protected HashSet<SelectablePoint> selectedPoints = new HashSet<SelectablePoint>();
 
+
+			protected HashSet<SelectablePoint> preSelectedPoints = new HashSet<SelectablePoint>();
+
 			/// <summary>
 			/// グラフのY方向拡大率のカウンタ
 			/// </summary>
@@ -828,7 +836,12 @@ namespace Effekseer.GUI.Component
 
 			static public FCurve Create(Tuple<string, object> v, FCurves window)
 			{
-				if (v.Item2 is Data.Value.FCurveVector3D)
+				if (v.Item2 is Data.Value.FCurveVector2D)
+				{
+					var v_ = (Data.Value.FCurveVector2D)v.Item2;
+					return new FCurveVector2D(v.Item1, v_, window);
+				}
+				else if (v.Item2 is Data.Value.FCurveVector3D)
 				{
 					var v_ = (Data.Value.FCurveVector3D)v.Item2;
 					return new FCurveVector3D(v.Item1, v_, window);
@@ -929,9 +942,10 @@ namespace Effekseer.GUI.Component
 				added = false;
 			}
 
-			public void SetSize(bool isParentExtended)
+			public void SetSize(bool isParentExtended, int width)
 			{
 				this.isParentExtended = isParentExtended;
+				Width = width;
 				GraphPanel.Size = new Size(Width, Height);
 
 				if (Height > 0)
@@ -1166,6 +1180,10 @@ namespace Effekseer.GUI.Component
 					var l = selectedPoints.Where(_ => _.Key == key && _.Type == SelectablePoint.PointType.Left).FirstOrDefault();
 					var r = selectedPoints.Where(_ => _.Key == key && _.Type == SelectablePoint.PointType.Right).FirstOrDefault();
 
+					var _c = preSelectedPoints.Where(_ => _.Key == key && _.Type == SelectablePoint.PointType.Center).FirstOrDefault();
+					var _l = preSelectedPoints.Where(_ => _.Key == key && _.Type == SelectablePoint.PointType.Left).FirstOrDefault();
+					var _r = preSelectedPoints.Where(_ => _.Key == key && _.Type == SelectablePoint.PointType.Right).FirstOrDefault();
+
 					var p = ValueToScreen(key.Frame, key.ValueAsFloat);
 					var pl = ValueToScreen(key.LeftX, key.LeftY);
 					var pr = ValueToScreen(key.RightX, key.RightY);
@@ -1183,44 +1201,67 @@ namespace Effekseer.GUI.Component
 							pr);
 					}
 
-					if (c != null)
-					{
-						g.FillEllipse(
-							Brushes.LightPink,
-							new Rectangle(p.X - 3, p.Y - 3, 7, 7));
-					}
-					else
-					{
-						g.FillEllipse(
-							Brushes.DeepPink,
-							new Rectangle(p.X - 3, p.Y - 3, 7, 7));
-					}
 
 					if (l != null)
 					{
 						g.FillEllipse(
 							Brushes.LightPink,
-							new Rectangle(pl.X - 2, pl.Y - 2, 5, 5));
+							new Rectangle(pl.X - 4, pl.Y - 4, 9, 9));
+					}
+					else if (_l != null)
+					{
+						g.FillEllipse(
+							Brushes.DeepSkyBlue,
+							new Rectangle(pl.X - 4, pl.Y - 4, 9, 9));
 					}
 					else if (l != null || r != null || c != null)
 					{
+						
 						g.FillEllipse(
 							Brushes.DeepPink,
-							new Rectangle(pl.X - 2, pl.Y - 2, 5, 5));
+							new Rectangle(pl.X - 4, pl.Y - 4, 9, 9));
 					}
+					
 
 					if (r != null)
 					{
 						g.FillEllipse(
 							Brushes.LightPink,
-							new Rectangle(pr.X - 2, pr.Y - 2, 5, 5));
+							new Rectangle(pr.X - 4, pr.Y - 4, 9, 9));
+					}
+					else if (_r != null)
+					{
+						g.FillEllipse(
+							Brushes.DeepSkyBlue,
+							new Rectangle(pr.X - 4, pr.Y - 4, 9, 9));
 					}
 					else if (l != null || r != null || c != null)
 					{
 						g.FillEllipse(
 							Brushes.DeepPink,
-							new Rectangle(pr.X - 2, pr.Y - 2, 5, 5));
+							new Rectangle(pr.X - 4, pr.Y - 4, 9, 9));
 					}
+					
+
+					if (c != null)
+					{
+						g.FillEllipse(
+							Brushes.LightPink,
+							new Rectangle(p.X - 2, p.Y - 2, 5, 5));
+					}
+					else if (_c != null)
+					{
+						g.FillEllipse(
+							Brushes.DeepSkyBlue,
+							new Rectangle(p.X - 2, p.Y - 2, 5, 5));
+					}
+					else
+					{
+						g.FillEllipse(
+							Brushes.DeepPink,
+							new Rectangle(p.X - 2, p.Y - 2, 5, 5));
+					}
+					
 				}
 			}
 
@@ -1337,6 +1378,18 @@ namespace Effekseer.GUI.Component
 			void GraphPanel_MouseMove(object sender, MouseEventArgs e)
 			{
 				MousePosition = e.Location;
+
+				var all = GetAllSelectablePoints();
+
+				preSelectedPoints.Clear();
+				
+				var selected = GetSelectablePoints(e.X, e.Y).ToArray();
+				foreach(var s in selected)
+				{
+					preSelectedPoints.Add(s);
+				}
+
+				GraphPanel.Refresh();
 			}
 
 			protected void MouseDown(int x, int y)
@@ -1435,7 +1488,7 @@ namespace Effekseer.GUI.Component
 								GraphPanel.Parent.Refresh();
 
 								// エフェクトに反映
-								GUIManager.DockViewer.IsChanged = true;
+								GUIManager.DockViewer.Viewer.IsChanged = true;
 
 								// 数値に反映
 								window.UpdateFCurveKey();
@@ -1475,7 +1528,7 @@ namespace Effekseer.GUI.Component
 									GraphPanel.Parent.Refresh();
 
 									// エフェクトに反映
-									GUIManager.DockViewer.IsChanged = true;
+									GUIManager.DockViewer.Viewer.IsChanged = true;
 
 									// 数値に反映
 									window.UpdateFCurveKey();
@@ -1515,7 +1568,7 @@ namespace Effekseer.GUI.Component
 										GraphPanel.Parent.Refresh();
 
 										// エフェクトに反映
-										GUIManager.DockViewer.IsChanged = true;
+										GUIManager.DockViewer.Viewer.IsChanged = true;
 
 										// 数値に反映
 										window.UpdateFCurveKey();
@@ -1554,6 +1607,8 @@ namespace Effekseer.GUI.Component
 					SetGraphToPanel();
 
 					SetFCurveKey();
+
+					GraphPanel.Refresh();
 				}
 			}
 
@@ -1631,6 +1686,12 @@ namespace Effekseer.GUI.Component
 			{
 				return null;
 			}
+
+			virtual protected IEnumerable<SelectablePoint> GetAllSelectablePoints()
+			{
+				return null;
+			}
+
 
 			/// <summary>
 			/// 選択可能ポイント
@@ -1731,13 +1792,34 @@ namespace Effekseer.GUI.Component
 				return Value;
 			}
 
+			protected override IEnumerable<SelectablePoint> GetAllSelectablePoints()
+			{
+				var selectedX = Value.R.Keys.Select(_ => new SelectablePoint(Value.R, _, SelectablePoint.PointType.Center));
+
+				var selectedY = Value.G.Keys.Select(_ => new SelectablePoint(Value.G, _, SelectablePoint.PointType.Center));
+
+				var selectedZ = Value.B.Keys.Select(_ => new SelectablePoint(Value.B, _, SelectablePoint.PointType.Center));
+
+				var selectedA = Value.A.Keys.Select(_ => new SelectablePoint(Value.A, _, SelectablePoint.PointType.Center));
+
+				var selectedLeft = selectedPoints.Select(_ => new SelectablePoint(_.FCurve, _.Key, SelectablePoint.PointType.Left));
+
+				var selectedRight = selectedPoints.Select(_ => new SelectablePoint(_.FCurve, _.Key, SelectablePoint.PointType.Right));
+
+				return selectedX.Concat(selectedY.Concat(selectedZ.Concat(selectedA.Concat(selectedLeft.Concat(selectedRight)))));
+			}
+
 			protected override IEnumerable<SelectablePoint> GetSelectablePoints(int x, int y)
 			{
 				var fv = ScreenToValue(x, y);
 
 				var selectableArea = new PointF(
-						3.0f / window.FCurvesMagnificationX,
-						3.0f / FCurvesMagnificationY);
+						5.0f / window.FCurvesMagnificationX,
+						5.0f / FCurvesMagnificationY);
+
+				var selectableAreaAncor = new PointF(
+						9.0f / window.FCurvesMagnificationX,
+						9.0f / FCurvesMagnificationY);
 
 				var selectedX = Value.R.Keys.Where(_ =>
 					fv.X - selectableArea.X < _.Frame &&
@@ -1766,19 +1848,19 @@ namespace Effekseer.GUI.Component
 				var selectedLeft = selectedPoints.Where(_ =>
 				{
 					var p1 = new PointF(_.Key.LeftX, _.Key.LeftY);
-					return fv.X - selectableArea.X < p1.X &&
-						p1.X < fv.X + selectableArea.X &&
-						fv.Y - selectableArea.Y < p1.Y &&
-						p1.Y < fv.Y + selectableArea.Y;
+					return fv.X - selectableAreaAncor.X < p1.X &&
+						p1.X < fv.X + selectableAreaAncor.X &&
+						fv.Y - selectableAreaAncor.Y < p1.Y &&
+						p1.Y < fv.Y + selectableAreaAncor.Y;
 				}).Select(_ => new SelectablePoint(_.FCurve, _.Key, SelectablePoint.PointType.Left));
 
 				var selectedRight = selectedPoints.Where(_ =>
 				{
 					var p1 = new PointF(_.Key.RightX, _.Key.RightY);
-					return fv.X - selectableArea.X < p1.X &&
-						p1.X < fv.X + selectableArea.X &&
-						fv.Y - selectableArea.Y < p1.Y &&
-						p1.Y < fv.Y + selectableArea.Y;
+					return fv.X - selectableAreaAncor.X < p1.X &&
+						p1.X < fv.X + selectableAreaAncor.X &&
+						fv.Y - selectableAreaAncor.Y < p1.Y &&
+						p1.Y < fv.Y + selectableAreaAncor.Y;
 				}).Select(_ => new SelectablePoint(_.FCurve, _.Key, SelectablePoint.PointType.Right));
 
 				return selectedX.Concat(selectedY.Concat(selectedZ.Concat(selectedA.Concat(selectedLeft.Concat(selectedRight)))));
@@ -1900,6 +1982,152 @@ namespace Effekseer.GUI.Component
 			}
 		}
 
+
+		class FCurveVector2D : FCurve
+		{
+			public Data.Value.FCurveVector2D Value { get; private set; }
+
+			public FCurveVector2D(string name, Data.Value.FCurveVector2D value, FCurves window)
+			{
+				Name = name;
+				Value = value;
+				this.window = window;
+
+				fCurvesMagYCount = (float)Math.Log((float)GraphPanel.Height / (value.X.DefaultValueRangeMax - value.X.DefaultValueRangeMin), 2.0);
+				fCurvesOffsetY = (value.X.DefaultValueRangeMax + value.X.DefaultValueRangeMin) / 2.0f;
+			}
+
+			public override object GetValueAsObject()
+			{
+				return Value;
+			}
+
+			protected override IEnumerable<SelectablePoint> GetAllSelectablePoints()
+			{
+				var selectedX = Value.X.Keys.Select(_ => new SelectablePoint(Value.X, _, SelectablePoint.PointType.Center));
+
+				var selectedY = Value.Y.Keys.Select(_ => new SelectablePoint(Value.Y, _, SelectablePoint.PointType.Center));
+
+				var selectedLeft = selectedPoints.Select(_ => new SelectablePoint(_.FCurve, _.Key, SelectablePoint.PointType.Left));
+
+				var selectedRight = selectedPoints.Select(_ => new SelectablePoint(_.FCurve, _.Key, SelectablePoint.PointType.Right));
+
+				return selectedX.Concat(selectedY.Concat(selectedLeft.Concat(selectedRight)));
+			}
+
+			protected override IEnumerable<SelectablePoint> GetSelectablePoints(int x, int y)
+			{
+				var fv = ScreenToValue(x, y);
+
+				var selectableArea = new PointF(
+						5.0f / window.FCurvesMagnificationX,
+						5.0f / FCurvesMagnificationY);
+
+				var selectableAreaAncor = new PointF(
+					9.0f / window.FCurvesMagnificationX,
+					9.0f / FCurvesMagnificationY);
+
+				var selectedX = Value.X.Keys.Where(_ =>
+					fv.X - selectableArea.X < _.Frame &&
+					_.Frame < fv.X + selectableArea.X &&
+					fv.Y - selectableArea.Y < _.ValueAsFloat &&
+					_.ValueAsFloat < fv.Y + selectableArea.Y).Select(_ => new SelectablePoint(Value.X, _, SelectablePoint.PointType.Center));
+
+				var selectedY = Value.Y.Keys.Where(_ =>
+					fv.X - selectableArea.X < _.Frame &&
+					_.Frame < fv.X + selectableArea.X &&
+					fv.Y - selectableArea.Y < _.ValueAsFloat &&
+					_.ValueAsFloat < fv.Y + selectableArea.Y).Select(_ => new SelectablePoint(Value.Y, _, SelectablePoint.PointType.Center));
+
+				var selectedLeft = selectedPoints.Where(_ =>
+				{
+					var p1 = new PointF(_.Key.LeftX, _.Key.LeftY);
+					return fv.X - selectableAreaAncor.X < p1.X &&
+						p1.X < fv.X + selectableAreaAncor.X &&
+						fv.Y - selectableAreaAncor.Y < p1.Y &&
+						p1.Y < fv.Y + selectableAreaAncor.Y;
+				}).Select(_ => new SelectablePoint(_.FCurve, _.Key, SelectablePoint.PointType.Left));
+
+				var selectedRight = selectedPoints.Where(_ =>
+				{
+					var p1 = new PointF(_.Key.RightX, _.Key.RightY);
+					return fv.X - selectableAreaAncor.X < p1.X &&
+						p1.X < fv.X + selectableAreaAncor.X &&
+						fv.Y - selectableAreaAncor.Y < p1.Y &&
+						p1.Y < fv.Y + selectableAreaAncor.Y;
+				}).Select(_ => new SelectablePoint(_.FCurve, _.Key, SelectablePoint.PointType.Right));
+
+				return selectedX.Concat(selectedY.Concat(selectedLeft.Concat(selectedRight)));
+			}
+
+			protected override void Paint(Graphics g)
+			{
+				DrawBackground(g);
+				DrawFrame(g);
+
+				DrawGrids(g);
+
+				DrawLine(g, Value.X, Color.Red);
+				DrawLine(g, Value.Y, Color.LightGreen);
+			}
+
+			protected override void KeyDown(Keys e)
+			{
+				if (!EventFlag && e == Keys.X)
+				{
+					selectedPoints.Clear();
+
+					var key = PointToKey(MousePosition.X, MousePosition.Y);
+
+					var p = new SelectablePoint();
+					p.FCurve = Value.X;
+					p.Key = key;
+					selectedPoints.Add(p);
+
+					Value.X.AddKey(key);
+				}
+
+				if (!EventFlag && e == Keys.Y)
+				{
+					selectedPoints.Clear();
+
+					var key = PointToKey(MousePosition.X, MousePosition.Y);
+
+					var p = new SelectablePoint();
+					p.FCurve = Value.Y;
+					p.Key = key;
+					selectedPoints.Add(p);
+
+					Value.Y.AddKey(key);
+				}
+
+				if (!EventFlag && e == Keys.Delete)
+				{
+					foreach (var s in selectedPoints)
+					{
+						s.FCurve.RemoveKey(s.Key);
+					}
+					selectedPoints.Clear();
+				}
+
+				SetGraphToPanel();
+			}
+
+			Data.Value.FCurveKey<float> PointToKey(int x, int y)
+			{
+				var p = ScreenToValue(x, y);
+
+				return new Data.Value.FCurveKey<float>((int)p.X, p.Y);
+			}
+
+
+			Point FCurveKeyToPoint(Data.Value.FCurveKey<float> key)
+			{
+				var p = ValueToScreen(key.Frame, key.Value);
+				return new Point(p.X, p.Y);
+			}
+		}
+
 		class FCurveVector3D : FCurve
 		{
 			public Data.Value.FCurveVector3D Value { get; private set; }
@@ -1919,13 +2147,32 @@ namespace Effekseer.GUI.Component
 				return Value;
 			}
 
+			protected override IEnumerable<SelectablePoint> GetAllSelectablePoints()
+			{
+				var selectedX = Value.X.Keys.Select(_ => new SelectablePoint(Value.X, _, SelectablePoint.PointType.Center));
+
+				var selectedY = Value.Y.Keys.Select(_ => new SelectablePoint(Value.Y, _, SelectablePoint.PointType.Center));
+
+				var selectedZ = Value.Z.Keys.Select(_ => new SelectablePoint(Value.Z, _, SelectablePoint.PointType.Center));
+
+				var selectedLeft = selectedPoints.Select(_ => new SelectablePoint(_.FCurve, _.Key, SelectablePoint.PointType.Left));
+
+				var selectedRight = selectedPoints.Select(_ => new SelectablePoint(_.FCurve, _.Key, SelectablePoint.PointType.Right));
+
+				return selectedX.Concat(selectedY.Concat(selectedZ.Concat(selectedLeft.Concat(selectedRight))));
+			}
+
 			protected override IEnumerable<SelectablePoint>  GetSelectablePoints(int x, int y)
 			{
 				var fv = ScreenToValue(x, y);
 
 				var selectableArea = new PointF(
-						3.0f / window.FCurvesMagnificationX,
-						3.0f / FCurvesMagnificationY);
+						5.0f / window.FCurvesMagnificationX,
+						5.0f / FCurvesMagnificationY);
+
+				var selectableAreaAncor = new PointF(
+					9.0f / window.FCurvesMagnificationX,
+					9.0f / FCurvesMagnificationY);
 
 				var selectedX = Value.X.Keys.Where(_ =>
 					fv.X - selectableArea.X < _.Frame &&
@@ -1948,19 +2195,19 @@ namespace Effekseer.GUI.Component
 				var selectedLeft = selectedPoints.Where(_ =>
 					{
 						var p1 = new PointF(_.Key.LeftX, _.Key.LeftY);
-						return fv.X - selectableArea.X < p1.X &&
-							p1.X < fv.X + selectableArea.X &&
-							fv.Y - selectableArea.Y < p1.Y &&
-							p1.Y < fv.Y + selectableArea.Y;
+						return fv.X - selectableAreaAncor.X < p1.X &&
+							p1.X < fv.X + selectableAreaAncor.X &&
+							fv.Y - selectableAreaAncor.Y < p1.Y &&
+							p1.Y < fv.Y + selectableAreaAncor.Y;
 					}).Select(_ => new SelectablePoint(_.FCurve, _.Key, SelectablePoint.PointType.Left));
 
 				var selectedRight = selectedPoints.Where(_ =>
 				{
 					var p1 = new PointF(_.Key.RightX, _.Key.RightY);
-					return fv.X - selectableArea.X < p1.X &&
-						p1.X < fv.X + selectableArea.X &&
-						fv.Y - selectableArea.Y < p1.Y &&
-						p1.Y < fv.Y + selectableArea.Y;
+					return fv.X - selectableAreaAncor.X < p1.X &&
+						p1.X < fv.X + selectableAreaAncor.X &&
+						fv.Y - selectableAreaAncor.Y < p1.Y &&
+						p1.Y < fv.Y + selectableAreaAncor.Y;
 				}).Select(_ => new SelectablePoint(_.FCurve, _.Key, SelectablePoint.PointType.Right));
 
 				return selectedX.Concat(selectedY.Concat(selectedZ.Concat(selectedLeft.Concat(selectedRight))));
@@ -2048,5 +2295,6 @@ namespace Effekseer.GUI.Component
 				return new Point(p.X, p.Y);
 			}
 		}
+
 	}
 }

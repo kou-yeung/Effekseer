@@ -82,7 +82,7 @@ struct RingColorParameter
 
 	union
 	{	
-		color fixed;
+		Color fixed;
 		random_color random;
 		easing_color easing;
 	};
@@ -147,25 +147,25 @@ struct RingLocationValues
 //----------------------------------------------------------------------------------
 struct RingColorValues
 {
-	color	current;
-	color	original;
+	Color	current;
+	Color	original;
 
 	union
 	{
 		struct
 		{
-	
+			Color _color;
 		} fixed;
 
 		struct
 		{
-
+			Color _color;
 		} random;
 
 		struct
 		{
-			color  start;
-			color  end;
+			Color  start;
+			Color  end;
 		} easing;
 	};
 };
@@ -226,7 +226,7 @@ public:
 
 	void BeginRendering(int32_t count, Manager* manager);
 
-	void Rendering(const Instance& instance, Manager* manager);
+	void Rendering(const Instance& instance, const Instance* next_instance, Manager* manager) override;
 
 	void EndRendering(Manager* manager);
 
@@ -243,11 +243,11 @@ private:
 	
 	void LoadColorParameter( unsigned char*& pos, RingColorParameter& param );
 	
-	void InitializeSingleValues(const RingSingleParameter& param, RingSingleValues& values, Manager* manager);
+	void InitializeSingleValues(const RingSingleParameter& param, RingSingleValues& values, Manager* manager, InstanceGlobal* instanceGlobal);
 
-	void InitializeLocationValues(const RingLocationParameter& param, RingLocationValues& values, Manager* manager);
+	void InitializeLocationValues(const RingLocationParameter& param, RingLocationValues& values, Manager* manager, InstanceGlobal* instanceGlobal);
 	
-	void InitializeColorValues(const RingColorParameter& param, RingColorValues& values, Manager* manager);
+	void InitializeColorValues(const RingColorParameter& param, RingColorValues& values, Manager* manager, InstanceGlobal* instanceGlobal);
 	
 	void UpdateSingleValues( Instance& instance, const RingSingleParameter& param, RingSingleValues& values );
 	

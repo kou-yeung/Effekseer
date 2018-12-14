@@ -83,22 +83,28 @@ void main() {
 )";
 
 static const char g_sprite_fs_texture_src[] =
-"IN lowp vec4 vaColor;\n"
-"IN mediump vec4 vaTexCoord;\n"
+R"(
+IN lowp vec4 vaColor;
+IN mediump vec4 vaTexCoord;
 
-"uniform sampler2D uTexture0;\n"
+uniform sampler2D uTexture0;
 
-"void main() {\n"
-"FRAGCOLOR = vaColor * TEX2D(uTexture0, vaTexCoord.xy);\n"
-"}\n";
+void main()
+{
+	FRAGCOLOR = vaColor * TEX2D(uTexture0, vaTexCoord.xy);
+}
+)";
 
 static const char g_sprite_fs_no_texture_src[] =
-"IN lowp vec4 vaColor;\n"
-"IN mediump vec4 vaTexCoord;\n"
+R"(
+IN lowp vec4 vaColor;
+IN mediump vec4 vaTexCoord;
 
-"void main() {\n"
-"FRAGCOLOR = vaColor;\n"
-"}\n";
+void main()
+{
+	FRAGCOLOR = vaColor;
+}
+)";
 
 
 static const char g_sprite_distortion_vs_src [] =
@@ -271,6 +277,7 @@ Renderer* Renderer::Create(int32_t squareMaxCount, OpenGLDeviceType deviceType)
 RendererImplemented::RendererImplemented(int32_t squareMaxCount, OpenGLDeviceType deviceType)
 	: m_vertexBuffer( NULL )
 	, m_indexBuffer	( NULL )
+	, m_indexBufferForWireframe	( NULL )
 	, m_squareMaxCount	( squareMaxCount )
 	, m_renderState		( NULL )
 	, m_restorationOfStates(true)
@@ -333,14 +340,15 @@ RendererImplemented::~RendererImplemented()
 	ES_SAFE_DELETE( m_renderState );
 	ES_SAFE_DELETE( m_vertexBuffer );
 	ES_SAFE_DELETE( m_indexBuffer );
+	ES_SAFE_DELETE(m_indexBufferForWireframe);
 
 	if (isVaoEnabled)
 	{
-		assert(GetRef() == -10);
+		assert(GetRef() == -11);
 	}
 	else
 	{
-		assert(GetRef() == -6);
+		assert(GetRef() == -7);
 	}
 }
 
@@ -365,22 +373,54 @@ void RendererImplemented::OnResetDevice()
 		device->OnResetDevice();
 	}
 
+	GenerateIndexData();
+}
+
+//----------------------------------------------------------------------------------
+// インデックスデータの生成
+//----------------------------------------------------------------------------------
+void RendererImplemented::GenerateIndexData()
+{
+	// インデックスの生成
+	if( m_indexBuffer != NULL )
 	{
 		m_indexBuffer->Lock();
 
 		// ( 標準設定で　DirectX 時計周りが表, OpenGLは反時計回りが表 )
 		for( int i = 0; i < m_squareMaxCount; i++ )
 		{
-			uint16_t* buf = (uint16_t*)m_indexBuffer->GetBufferDirect( 6 );
-			buf[0] = 3 + 4 * i;
-			buf[1] = 1 + 4 * i;
-			buf[2] = 0 + 4 * i;
-			buf[3] = 3 + 4 * i;
-			buf[4] = 0 + 4 * i;
-			buf[5] = 2 + 4 * i;
+			uint16_t* buf = (uint16_t*) m_indexBuffer->GetBufferDirect(6);
+			buf[0] = (uint16_t) (3 + 4 * i);
+			buf[1] = (uint16_t) (1 + 4 * i);
+			buf[2] = (uint16_t) (0 + 4 * i);
+			buf[3] = (uint16_t) (3 + 4 * i);
+			buf[4] = (uint16_t) (0 + 4 * i);
+			buf[5] = (uint16_t) (2 + 4 * i);
 		}
 
 		m_indexBuffer->Unlock();
+	}
+
+	// ワイヤーフレーム用インデックスの生成
+	if( m_indexBufferForWireframe != NULL )
+	{
+		m_indexBufferForWireframe->Lock();
+
+		// ( 標準設定で　DirectX 時計周りが表, OpenGLは反時計回りが表 )
+		for( int i = 0; i < m_squareMaxCount; i++ )
+		{
+			uint16_t* buf = (uint16_t*)m_indexBufferForWireframe->GetBufferDirect( 8 );
+			buf[0] = (uint16_t)(0 + 4 * i);
+			buf[1] = (uint16_t)(1 + 4 * i);
+			buf[2] = (uint16_t)(2 + 4 * i);
+			buf[3] = (uint16_t)(3 + 4 * i);
+			buf[4] = (uint16_t)(0 + 4 * i);
+			buf[5] = (uint16_t)(2 + 4 * i);
+			buf[6] = (uint16_t)(1 + 4 * i);
+			buf[7] = (uint16_t)(3 + 4 * i);
+		}
+
+		m_indexBufferForWireframe->Unlock();
 	}
 }
 
@@ -389,41 +429,7 @@ void RendererImplemented::OnResetDevice()
 //----------------------------------------------------------------------------------
 bool RendererImplemented::Initialize()
 {
-	// 頂点の生成
-	{
-		// 最大でfloat * 10 と仮定
-		m_vertexBuffer = VertexBuffer::Create( this, sizeof(Vertex) * m_squareMaxCount * 4, true );
-		if( m_vertexBuffer == NULL ) return false;
-	}
-
-	// 参照カウントの調整
-	Release();
-
-
-	// インデックスの生成
-	{
-		m_indexBuffer = IndexBuffer::Create( this, m_squareMaxCount * 6, false );
-		if( m_indexBuffer == NULL ) return false;
-
-		m_indexBuffer->Lock();
-
-		// ( 標準設定で　DirectX 時計周りが表, OpenGLは反時計回りが表 )
-		for( int i = 0; i < m_squareMaxCount; i++ )
-		{
-			uint16_t* buf = (uint16_t*)m_indexBuffer->GetBufferDirect( 6 );
-			buf[0] = (uint16_t)(3 + 4 * i);
-			buf[1] = (uint16_t)(1 + 4 * i);
-			buf[2] = (uint16_t)(0 + 4 * i);
-			buf[3] = (uint16_t)(3 + 4 * i);
-			buf[4] = (uint16_t)(0 + 4 * i);
-			buf[5] = (uint16_t)(2 + 4 * i);
-		}
-
-		m_indexBuffer->Unlock();
-	}
-
-	// 参照カウントの調整
-	Release();
+	SetSquareMaxCount( m_squareMaxCount );
 
 	m_renderState = new RenderState( this );
 
@@ -589,6 +595,9 @@ bool RendererImplemented::Initialize()
 	// 参照カウントの調整
 	if (m_vao_no_texture_distortion != nullptr) Release();
 
+	m_vao_wire_frame = VertexArray::Create(this, m_shader_no_texture, GetVertexBuffer(), m_indexBufferForWireframe);
+	if (m_vao_wire_frame != nullptr) Release();
+
 	m_standardRenderer = new EffekseerRenderer::StandardRenderer<RendererImplemented, Shader, Vertex, VertexDistortion>(this, m_shader, m_shader_no_texture, m_shader_distortion, m_shader_no_texture_distortion);
 
 	return true;
@@ -634,6 +643,11 @@ bool RendererImplemented::BeginRendering()
 		glGetIntegerv(GL_BLEND_SRC_RGB, &m_originalState.blendSrc);
 		glGetIntegerv(GL_BLEND_DST_RGB, &m_originalState.blendDst);
 		glGetIntegerv(GL_BLEND_EQUATION, &m_originalState.blendEquation);
+
+		if (GLExt::IsSupportedVertexArray())
+		{
+			glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &m_originalState.vao);
+		}
 	}
 
 	glDepthFunc(GL_LEQUAL);
@@ -659,10 +673,10 @@ bool RendererImplemented::EndRendering()
 {
 	GLCheckError();
 
-	// レンダラーリセット
+	// reset renderer
 	m_standardRenderer->ResetAndRenderingIfRequired();
 
-	// ステートを復元する
+	// restore states
 	if(m_restorationOfStates)
 	{
 		if (m_originalState.blend) glEnable(GL_BLEND); else glDisable(GL_BLEND);
@@ -686,6 +700,11 @@ bool RendererImplemented::EndRendering()
 			{
 				GLExt::glBindSampler(i, 0);
 			}
+		}
+
+		if (GLExt::IsSupportedVertexArray())
+		{
+			GLExt::glBindVertexArray(m_originalState.vao);
 		}
 	}
 
@@ -723,7 +742,6 @@ int32_t RendererImplemented::GetSquareMaxCount() const
 //----------------------------------------------------------------------------------
 void RendererImplemented::SetSquareMaxCount(int32_t count)
 {
-	if (m_squareMaxCount == count) return;
 	m_squareMaxCount = count;
 
 	if (m_vertexBuffer != nullptr) AddRef();
@@ -746,26 +764,22 @@ void RendererImplemented::SetSquareMaxCount(int32_t count)
 	{
 		m_indexBuffer = IndexBuffer::Create(this, m_squareMaxCount * 6, false);
 		if (m_indexBuffer == NULL) return;
-
-		m_indexBuffer->Lock();
-
-		// ( 標準設定で　DirectX 時計周りが表, OpenGLは反時計回りが表 )
-		for (int i = 0; i < m_squareMaxCount; i++)
-		{
-			uint16_t* buf = (uint16_t*) m_indexBuffer->GetBufferDirect(6);
-			buf[0] = (uint16_t) (3 + 4 * i);
-			buf[1] = (uint16_t) (1 + 4 * i);
-			buf[2] = (uint16_t) (0 + 4 * i);
-			buf[3] = (uint16_t) (3 + 4 * i);
-			buf[4] = (uint16_t) (0 + 4 * i);
-			buf[5] = (uint16_t) (2 + 4 * i);
-		}
-
-		m_indexBuffer->Unlock();
 	}
 
 	// 参照カウントの調整
 	Release();
+
+	// ワイヤーフレーム用インデックスの生成
+	{
+		m_indexBufferForWireframe = IndexBuffer::Create( this, m_squareMaxCount * 8, false );
+		if( m_indexBufferForWireframe == NULL ) return;
+	}
+
+	// 参照カウントの調整
+	Release();
+
+	// インデックスデータの生成
+	GenerateIndexData();
 }
 
 //----------------------------------------------------------------------------------
@@ -787,7 +801,7 @@ const ::Effekseer::Vector3D& RendererImplemented::GetLightDirection() const
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
-void RendererImplemented::SetLightDirection( ::Effekseer::Vector3D& direction )
+void RendererImplemented::SetLightDirection( const ::Effekseer::Vector3D& direction )
 {
 	m_lightDirection = direction;
 }
@@ -803,7 +817,7 @@ const ::Effekseer::Color& RendererImplemented::GetLightColor() const
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
-void RendererImplemented::SetLightColor( ::Effekseer::Color& color )
+void RendererImplemented::SetLightColor( const ::Effekseer::Color& color )
 {
 	m_lightColor = color;
 }
@@ -819,7 +833,7 @@ const ::Effekseer::Color& RendererImplemented::GetLightAmbientColor() const
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
-void RendererImplemented::SetLightAmbientColor( ::Effekseer::Color& color )
+void RendererImplemented::SetLightAmbientColor( const ::Effekseer::Color& color )
 {
 	m_lightAmbient = color;
 }
@@ -853,6 +867,15 @@ const ::Effekseer::Matrix44& RendererImplemented::GetCameraMatrix() const
 //----------------------------------------------------------------------------------
 void RendererImplemented::SetCameraMatrix( const ::Effekseer::Matrix44& mat )
 {
+	m_cameraFrontDirection = ::Effekseer::Vector3D(mat.Values[0][2], mat.Values[1][2], mat.Values[2][2]);
+
+	auto localPos = ::Effekseer::Vector3D(-mat.Values[3][0], -mat.Values[3][1], -mat.Values[3][2]);
+	auto f = m_cameraFrontDirection;
+	auto r = ::Effekseer::Vector3D(mat.Values[0][0], mat.Values[1][0], mat.Values[2][0]);
+	auto u = ::Effekseer::Vector3D(mat.Values[0][1], mat.Values[1][1], mat.Values[2][1]);
+
+	m_cameraPosition = r * localPos.X + u * localPos.Y + f * localPos.Z;
+
 	m_camera = mat;
 }
 
@@ -862,6 +885,22 @@ void RendererImplemented::SetCameraMatrix( const ::Effekseer::Matrix44& mat )
 ::Effekseer::Matrix44& RendererImplemented::GetCameraProjectionMatrix()
 {
 	return m_cameraProj;
+}
+
+::Effekseer::Vector3D RendererImplemented::GetCameraFrontDirection() const
+{
+	return m_cameraFrontDirection;
+}
+
+::Effekseer::Vector3D RendererImplemented::GetCameraPosition() const
+{
+	return m_cameraPosition;
+}
+
+void RendererImplemented::SetCameraParameter(const ::Effekseer::Vector3D& front, const ::Effekseer::Vector3D& position)
+{
+	m_cameraFrontDirection = front;
+	m_cameraPosition = position;
 }
 
 //----------------------------------------------------------------------------------
@@ -949,7 +988,8 @@ void RendererImplemented::SetDistortingCallback(EffekseerRenderer::DistortingCal
 //----------------------------------------------------------------------------------
 void RendererImplemented::SetVertexBuffer( VertexBuffer* vertexBuffer, int32_t size )
 {
-	if (m_currentVertexArray == nullptr || m_currentVertexArray->GetVertexBuffer() == nullptr)
+	if (m_currentVertexArray == nullptr ||
+		m_currentVertexArray->GetVertexBuffer() == nullptr)
 	{
 		GLExt::glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer->GetInterface());
 	}
@@ -1003,7 +1043,8 @@ void RendererImplemented::SetLayout(Shader* shader)
 {
 	GLCheckError();
 	
-	if (m_currentVertexArray == nullptr || m_currentVertexArray->GetVertexBuffer() == nullptr)
+	if (m_currentVertexArray == nullptr || 
+		m_currentVertexArray->GetVertexBuffer() == nullptr)
 	{
 		shader->EnableAttribs();
 		shader->SetVertex();
@@ -1018,12 +1059,17 @@ void RendererImplemented::DrawSprites( int32_t spriteCount, int32_t vertexOffset
 {
 	GLCheckError();
 
-	//assert( vertexOffset == 0 );
+	drawcallCount++;
+	drawvertexCount += spriteCount * 4;
 
-	// 全てがスプライトであること前提
-	auto triangles = vertexOffset / 4 * 2;
-
-	glDrawElements(GL_TRIANGLES, spriteCount * 6, GL_UNSIGNED_SHORT, (void*) (triangles * 3 * sizeof(GLushort)));
+	if( m_renderMode == ::Effekseer::RenderMode::Normal )
+	{
+		glDrawElements(GL_TRIANGLES, spriteCount * 6, GL_UNSIGNED_SHORT, (void*) (vertexOffset / 4 * 6 * sizeof(GLushort)));
+	}
+	else if( m_renderMode == ::Effekseer::RenderMode::Wireframe )
+	{
+		glDrawElements(GL_LINES, spriteCount * 8, GL_UNSIGNED_SHORT, (void*) (vertexOffset / 4 * 8 * sizeof(GLushort)));
+	}
 	
 	GLCheckError();
 }
@@ -1035,9 +1081,41 @@ void RendererImplemented::DrawPolygon( int32_t vertexCount, int32_t indexCount)
 {
 	GLCheckError();
 
+	drawcallCount++;
+	drawvertexCount += vertexCount;
+
 	glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, NULL);
 
 	GLCheckError();
+}
+
+//----------------------------------------------------------------------------------
+//
+//----------------------------------------------------------------------------------
+Shader* RendererImplemented::GetShader(bool useTexture, bool useDistortion) const
+{
+	if( useDistortion )
+	{
+		if( useTexture && m_renderMode == Effekseer::RenderMode::Normal )
+		{
+			return m_shader_distortion;
+		}
+		else
+		{
+			return m_shader_no_texture_distortion;
+		}
+	}
+	else
+	{
+		if( useTexture && m_renderMode == Effekseer::RenderMode::Normal )
+		{
+			return m_shader;
+		}
+		else
+		{
+			return m_shader_no_texture;
+		}
+	}
 }
 
 //----------------------------------------------------------------------------------
@@ -1048,7 +1126,11 @@ void RendererImplemented::BeginShader(Shader* shader)
 	GLCheckError();
 
 	// VAOの切り替え
-	if (shader == m_shader)
+	if (m_renderMode == ::Effekseer::RenderMode::Wireframe)
+	{
+		SetVertexArray(m_vao_wire_frame);
+	}
+	else if (shader == m_shader)
 	{
 		SetVertexArray(m_vao);
 	}
@@ -1064,13 +1146,16 @@ void RendererImplemented::BeginShader(Shader* shader)
 	{
 		SetVertexArray(m_vao_no_texture_distortion);
 	}
-
+	
 	shader->BeginScene();
 
 	if (m_currentVertexArray)
 	{
 		GLExt::glBindVertexArray(m_currentVertexArray->GetInterface());
 	}
+
+	assert(currentShader == nullptr);
+	currentShader = shader;
 
 	GLCheckError();
 }
@@ -1080,6 +1165,9 @@ void RendererImplemented::BeginShader(Shader* shader)
 //----------------------------------------------------------------------------------
 void RendererImplemented::EndShader(Shader* shader)
 {
+	assert(currentShader == shader);
+	currentShader = nullptr;
+
 	GLCheckError();
 	
 	if (m_currentVertexArray)
@@ -1116,9 +1204,18 @@ void RendererImplemented::EndShader(Shader* shader)
 	GLCheckError();
 }
 
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
+void RendererImplemented::SetVertexBufferToShader(const void* data, int32_t size)
+{
+	assert(currentShader != nullptr);
+	memcpy(currentShader->GetVertexConstantBuffer(), data, size);
+}
+
+void RendererImplemented::SetPixelBufferToShader(const void* data, int32_t size)
+{
+	assert(currentShader != nullptr);
+	memcpy(currentShader->GetPixelConstantBuffer(), data, size);
+}
+
 void RendererImplemented::SetTextures(Shader* shader, Effekseer::TextureData** textures, int32_t count)
 {
 	GLCheckError();
@@ -1158,43 +1255,111 @@ void RendererImplemented::ResetRenderState()
 	m_renderState->Update( true );
 }
 
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
-Model::Model(void* data, int32_t size)
-	: ::Effekseer::Model(data, size)
-	, VertexBuffer(0)
-	, IndexBuffer(0)
-	, ModelCount(1)
+int32_t RendererImplemented::GetDrawCallCount() const
 {
-	auto vertexData = GetVertexes();
-	auto vertexCount = GetVertexCount();
-	auto faceData = GetFaces();
-	auto faceCount = GetFaceCount();
+	return drawcallCount;
+}
 
-	VertexCount = vertexCount;
-	IndexCount = faceCount * 3;
+int32_t RendererImplemented::GetDrawVertexCount() const
+{
+	return drawvertexCount;
+}
 
-	GLExt::glGenBuffers(1, &VertexBuffer);
-	GLExt::glBindBuffer(GL_ARRAY_BUFFER, VertexBuffer);
-	size_t vertexSize = vertexCount * sizeof(::Effekseer::Model::Vertex);
-	GLExt::glBufferData(GL_ARRAY_BUFFER, vertexSize, vertexData, GL_STATIC_DRAW);
-	GLExt::glBindBuffer(GL_ARRAY_BUFFER, 0);
+void RendererImplemented::ResetDrawCallCount()
+{
+	drawcallCount = 0;
+}
 
-	GLExt::glGenBuffers(1, &IndexBuffer);
-	GLExt::glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBuffer);
-	size_t indexSize = faceCount * sizeof(::Effekseer::Model::Face);
-	GLExt::glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexSize, faceData, GL_STATIC_DRAW);
-	GLExt::glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+void RendererImplemented::ResetDrawVertexCount()
+{
+	drawvertexCount = 0;
 }
 
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
+
+Model::InternalModel::InternalModel()
+{
+	VertexBuffer = 0;
+	IndexBuffer = 0;
+}
+
+Model::InternalModel::~InternalModel()
+{
+	GLExt::glDeleteBuffers(1, &IndexBuffer);
+	GLExt::glDeleteBuffers(1, &VertexBuffer);
+}
+
+bool Model::InternalModel::TryDelayLoad()
+{
+	if(VertexBuffer > 0) return false;
+	
+	GLExt::glGenBuffers(1, &VertexBuffer);
+	if (VertexBuffer > 0)
+	{
+		GLExt::glBindBuffer(GL_ARRAY_BUFFER, VertexBuffer);
+		GLExt::glBufferData(GL_ARRAY_BUFFER, delayVertexBuffer.size(), delayVertexBuffer.data(), GL_STATIC_DRAW);
+		GLExt::glBindBuffer(GL_ARRAY_BUFFER, 0);
+	}
+	
+	GLExt::glGenBuffers(1, &IndexBuffer);
+	if (IndexBuffer > 0)
+	{
+		GLExt::glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBuffer);
+		GLExt::glBufferData(GL_ELEMENT_ARRAY_BUFFER, delayIndexBuffer.size(), delayIndexBuffer.data(), GL_STATIC_DRAW);
+		GLExt::glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	}
+
+	return true;
+}
+	
+Model::Model(void* data, int32_t size)
+	: ::Effekseer::Model(data, size)
+	, InternalModels(nullptr)
+	, ModelCount(1)
+{
+	InternalModels = new Model::InternalModel[GetFrameCount()];
+
+	for (int32_t f = 0; f < GetFrameCount(); f++)
+	{
+		auto vertexData = GetVertexes(f);
+		auto vertexCount = GetVertexCount(f);
+		auto faceData = GetFaces(f);
+		auto faceCount = GetFaceCount(f);
+
+		InternalModels[f].VertexCount = vertexCount;
+		InternalModels[f].IndexCount = faceCount * 3;
+		
+		GLExt::glGenBuffers(1, &InternalModels[f].VertexBuffer);
+		size_t vertexSize = vertexCount * sizeof(::Effekseer::Model::Vertex);
+		if (InternalModels[f].VertexBuffer > 0)
+		{
+			GLExt::glBindBuffer(GL_ARRAY_BUFFER, InternalModels[f].VertexBuffer);
+			GLExt::glBufferData(GL_ARRAY_BUFFER, vertexSize, vertexData, GL_STATIC_DRAW);
+			GLExt::glBindBuffer(GL_ARRAY_BUFFER, 0);
+		}
+		InternalModels[f].delayVertexBuffer.resize(vertexSize);
+		memcpy(InternalModels[f].delayVertexBuffer.data(), vertexData, vertexSize);
+		
+		GLExt::glGenBuffers(1, &InternalModels[f].IndexBuffer);
+		size_t indexSize = faceCount * sizeof(::Effekseer::Model::Face);
+
+		if (InternalModels[f].IndexBuffer > 0)
+		{
+			GLExt::glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, InternalModels[f].IndexBuffer);
+			GLExt::glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexSize, faceData, GL_STATIC_DRAW);
+			GLExt::glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		}
+		InternalModels[f].delayIndexBuffer.resize(indexSize);
+		memcpy(InternalModels[f].delayIndexBuffer.data(), faceData, indexSize);
+	}
+}
+
 Model::~Model()
 {
-	GLExt::glDeleteBuffers( 1, &IndexBuffer );
-	GLExt::glDeleteBuffers( 1, &VertexBuffer );
+	ES_SAFE_DELETE_ARRAY(InternalModels);
+
 }
 
 //----------------------------------------------------------------------------------

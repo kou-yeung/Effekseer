@@ -24,6 +24,14 @@ RenderState::RenderState( RendererImplemented* renderer )
 	{
 		GLExt::glGenSamplers(4, m_samplers);
 	}
+
+	GLint frontFace = 0;
+	glGetIntegerv(GL_FRONT_FACE, &frontFace);
+
+	if (GL_CW == frontFace)
+	{
+		m_isCCW = false;
+	}
 }
 
 //-----------------------------------------------------------------------------------
@@ -67,20 +75,41 @@ void RenderState::Update( bool forced )
 
 	if( m_active.CullingType != m_next.CullingType || forced )
 	{
-		if( m_next.CullingType == Effekseer::CullingType::Front )
+		if (m_isCCW)
 		{
-			glEnable( GL_CULL_FACE );
-			glCullFace( GL_FRONT );
+			if (m_next.CullingType == Effekseer::CullingType::Front)
+			{
+				glEnable(GL_CULL_FACE);
+				glCullFace(GL_FRONT);
+			}
+			else if (m_next.CullingType == Effekseer::CullingType::Back)
+			{
+				glEnable(GL_CULL_FACE);
+				glCullFace(GL_BACK);
+			}
+			else if (m_next.CullingType == Effekseer::CullingType::Double)
+			{
+				glDisable(GL_CULL_FACE);
+				glCullFace(GL_FRONT_AND_BACK);
+			}
 		}
-		else if (m_next.CullingType == Effekseer::CullingType::Back)
+		else
 		{
-			glEnable( GL_CULL_FACE );
-			glCullFace( GL_BACK );
-		}
-		else if( m_next.CullingType == Effekseer::CullingType::Double )
-		{
-			glDisable( GL_CULL_FACE );
-			glCullFace( GL_FRONT_AND_BACK );
+			if (m_next.CullingType == Effekseer::CullingType::Front)
+			{
+				glEnable(GL_CULL_FACE);
+				glCullFace(GL_BACK);
+			}
+			else if (m_next.CullingType == Effekseer::CullingType::Back)
+			{
+				glEnable(GL_CULL_FACE);
+				glCullFace(GL_FRONT);
+			}
+			else if (m_next.CullingType == Effekseer::CullingType::Double)
+			{
+				glDisable(GL_CULL_FACE);
+				glCullFace(GL_FRONT_AND_BACK);
+			}
 		}
 	}
 
@@ -88,7 +117,8 @@ void RenderState::Update( bool forced )
 
 	if( m_active.AlphaBlend != m_next.AlphaBlend || forced )
 	{
-		if(  m_next.AlphaBlend == ::Effekseer::AlphaBlendType::Opacity )
+		if(  m_next.AlphaBlend == ::Effekseer::AlphaBlendType::Opacity ||
+			m_renderer->GetRenderMode() == ::Effekseer::RenderMode::Wireframe )
 		{
 			glDisable( GL_BLEND );
 		}
@@ -99,7 +129,7 @@ void RenderState::Update( bool forced )
 			if( m_next.AlphaBlend == ::Effekseer::AlphaBlendType::Sub )
 			{
 				GLExt::glBlendEquationSeparate(GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD);
-				GLExt::glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE);
+				GLExt::glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_ONE);
 			}
 			else
 			{
@@ -114,7 +144,7 @@ void RenderState::Update( bool forced )
 				}
 				else if( m_next.AlphaBlend == ::Effekseer::AlphaBlendType::Mul )
 				{
-					GLExt::glBlendFuncSeparate(GL_ZERO, GL_SRC_COLOR, GL_ONE, GL_ONE);
+					GLExt::glBlendFuncSeparate(GL_ZERO, GL_SRC_COLOR, GL_ZERO, GL_ONE);
 				}
 			}
 		}

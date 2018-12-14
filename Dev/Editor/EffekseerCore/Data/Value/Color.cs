@@ -51,13 +51,45 @@ namespace Effekseer.Data.Value
 			A = new Int(a, a_max, a_min);
 		}
 
-		public void SetValue(int r, int g, int b)
+		public void SetValue(int r, int g, int b, int a = -1, bool isCombined = false)
 		{
-			Command.CommandManager.StartCollection();
-			R.SetValue(r);
-			G.SetValue(g);
-			B.SetValue(b);
-			Command.CommandManager.EndCollection();
+			if (
+				r == R.GetValue() &&
+				g == G.GetValue() &&
+				b == B.GetValue() &&
+				a == A.GetValue()) return;
+
+			int old_r = R.GetValue();
+			int new_r = r;
+
+			int old_g = G.GetValue();
+			int new_g = g;
+
+			int old_b = B.GetValue();
+			int new_b = b;
+
+			int old_a = A.GetValue();
+			int new_a = a;
+
+			var cmd = new Command.DelegateCommand(
+				() =>
+				{
+					R.SetValueDirectly(new_r);
+					G.SetValueDirectly(new_g);
+					B.SetValueDirectly(new_b);
+					A.SetValueDirectly(new_a);
+				},
+				() =>
+				{
+					R.SetValueDirectly(old_r);
+					G.SetValueDirectly(old_g);
+					B.SetValueDirectly(old_b);
+					A.SetValueDirectly(old_a);
+				},
+				this,
+				isCombined);
+
+			Command.CommandManager.Execute(cmd);
 		}
 
 		public static implicit operator byte[](Color value)

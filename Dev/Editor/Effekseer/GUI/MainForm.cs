@@ -16,11 +16,11 @@ namespace Effekseer.GUI
 		{
 			InitializeComponent();
 
-			// イベント設定
+			// assgin events
 			Core.OnAfterNew += new EventHandler(Core_OnAfterNew);
 			Core.OnAfterSave += new EventHandler(Core_OnAfterSave);
 			Core.OnAfterLoad += new EventHandler(Core_OnAfterLoad);
-			GUIManager.OnChangeRecentFiles += new EventHandler(GUIManager_OnChangeRecentFiles);
+			RecentFiles.OnChangeRecentFiles += new EventHandler(GUIManager_OnChangeRecentFiles);
 
 			recentFiles = new ToolStripMenuItem();
             recentFiles.Text = Properties.Resources.RecentFiles;
@@ -35,7 +35,7 @@ namespace Effekseer.GUI
 		}
 
 		/// <summary>
-		/// 最近使用したファイル
+		/// recent files
 		/// </summary>
 		ToolStripMenuItem recentFiles = null;
 
@@ -48,7 +48,7 @@ namespace Effekseer.GUI
 		{
 			recentFiles.DropDownItems.Clear();
 
-			var rf = GUIManager.GetRecentFiles();
+			var rf = RecentFiles.GetRecentFiles();
 
 			foreach (var f in rf)
 			{
@@ -69,7 +69,7 @@ namespace Effekseer.GUI
 			
 			if (Core.IsChanged)
 			{
-                newTitle += Properties.Resources.UnsavedChanges;
+				newTitle += Resources.GetString("UnsavedChanges");
 			}
 
 			if (Text != newTitle)
@@ -236,43 +236,6 @@ namespace Effekseer.GUI
 				menuStrip.Items.Add(menu);
 			}
 
-			/*
-			{
-				var menu = new ToolStripMenuItem("全体処理");
-
-				for (int c = 0; c < Core.CommandScripts.Count; c++)
-				{
-					var command_item = new ToolStripMenuItem();
-					var command = Core.CommandScripts[c];
-					command_item.Text = command.Title;
-					command_item.Click += (object _sender, EventArgs _e) =>
-					{
-						command.Function();
-					};
-					menu.DropDownItems.Add(command_item);
-				}
-
-				menuStrip.Items.Add(menu);
-			}
-
-			{
-				var menu = new ToolStripMenuItem("選択部処理");
-				for (int c = 0; c < Core.SelectedScripts.Count; c++)
-				{
-					var command_item = new ToolStripMenuItem();
-					var command = Core.SelectedScripts[c];
-					command_item.Text = command.Title;
-					command_item.Click += (object _sender, EventArgs _e) =>
-					{
-						command.Function(Core.SelectedNode, null);
-					};
-					menu.DropDownItems.Add(command_item);
-				}
-
-				menuStrip.Items.Add(menu);
-			}
-			*/
-
 			{
 				var menu = new ToolStripMenuItem(Properties.Resources.Window);
 
@@ -299,13 +262,14 @@ namespace Effekseer.GUI
 						menu.DropDownItems.Add(item);
 					};
 
-				setDockWindow(Properties.Resources.NodeTree, typeof(DockNodeTreeView), null);
+				setDockWindow(Properties.Resources.NodeTree, typeof(DockNodeTreeView), Properties.Resources.IconNodeTree);
 				setDockWindow(Properties.Resources.BasicSettings, typeof(DockNodeCommonValues), Properties.Resources.IconCommon);
 				setDockWindow(Properties.Resources.Position, typeof(DockNodeLocationValues), Properties.Resources.IconLocation);
 				setDockWindow(Properties.Resources.AttractionForces, typeof(DockNodeLocationAbsValues), Properties.Resources.IconLocationAbs);
 				setDockWindow(Properties.Resources.SpawningMethod, typeof(DockNodeGenerationLocationValues), Properties.Resources.IconGenerationLocation);
 				setDockWindow(Properties.Resources.Rotation, typeof(DockNodeRotationValues), Properties.Resources.IconRotation);
 				setDockWindow(Properties.Resources.Scale, typeof(DockNodeScaleValues), Properties.Resources.IconScale);
+				setDockWindow(Properties.Resources.Scale, typeof(DockNodeDepthValues), Properties.Resources.IconScale);
 				setDockWindow(Properties.Resources.BasicRenderSettings, typeof(DockNodeRendererCommonValues), Properties.Resources.IconRendererCommon);
 				setDockWindow(Properties.Resources.RenderSettings, typeof(DockNodeRendererValues), Properties.Resources.IconRenderer);
 				setDockWindow(Properties.Resources.Sound, typeof(DockNodeSoundValues), Properties.Resources.IconSound);
@@ -313,11 +277,12 @@ namespace Effekseer.GUI
 				setDockWindow(Properties.Resources.ViewerControls, typeof(DockViewerController), Properties.Resources.IconViewer);
 				setDockWindow(Properties.Resources.CameraSettings, typeof(DockViewPoint), Properties.Resources.IconViewPoint);
 				setDockWindow(Properties.Resources.Recorder, typeof(DockRecorder), Properties.Resources.IconRecorder);
-				setDockWindow(Properties.Resources.Options, typeof(DockOption), null);
-				setDockWindow(Properties.Resources.Behavior, typeof(DockEffectBehavior), null);
-				setDockWindow(Properties.Resources.Culling, typeof(DockCulling), null);
-				setDockWindow(Properties.Resources.Network, typeof(DockNetwork), null);
-				setDockWindow(Properties.Resources.FileViewer, typeof(DockFileViewer), null);
+				setDockWindow(Properties.Resources.Options, typeof(DockOption), Properties.Resources.IconOption);
+				setDockWindow(Properties.Resources.Options, typeof(DockGlobal), Properties.Resources.IconOption);
+				setDockWindow(Properties.Resources.Behavior, typeof(DockEffectBehavior), Properties.Resources.IconBehavior);
+				setDockWindow(Properties.Resources.Culling, typeof(DockCulling), Properties.Resources.IconCulling);
+				setDockWindow(Properties.Resources.Network, typeof(DockNetwork), Properties.Resources.IconNetwork);
+				setDockWindow(Properties.Resources.FileViewer, typeof(DockFileViewer), Properties.Resources.IconFileViewer);
 
 				menuStrip.Items.Add(menu);
 			}
@@ -422,8 +387,8 @@ namespace Effekseer.GUI
  
 		private void MainForm_Resize(object sender, EventArgs e)
 		{
-			// 最大化、最小化前のサイズを保存
-			if(this.WindowState != FormWindowState.Maximized && this.WindowState != FormWindowState.Minimized)
+			// Save a size before maximization or miniimization
+			if (this.WindowState != FormWindowState.Maximized && this.WindowState != FormWindowState.Minimized)
 			{
 				BeforeResizeWidth = this.Width;
 				BeforeResizeHeight = this.Height;
@@ -432,8 +397,8 @@ namespace Effekseer.GUI
 
 		private void MainForm_Move(object sender, EventArgs e)
 		{
-			// 最大化、最小化前の位置を保存
-			if(this.WindowState != FormWindowState.Maximized && this.WindowState != FormWindowState.Minimized)
+			// Save a location before maximization or miniimization
+			if (this.WindowState != FormWindowState.Maximized && this.WindowState != FormWindowState.Minimized)
 				BeforeResizeLocation = this.Location;
 		}
 	}

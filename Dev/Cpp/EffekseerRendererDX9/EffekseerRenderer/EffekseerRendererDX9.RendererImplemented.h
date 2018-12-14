@@ -10,6 +10,8 @@
 #include "../../EffekseerRendererCommon/EffekseerRenderer.RenderStateBase.h"
 #include "../../EffekseerRendererCommon/EffekseerRenderer.StandardRenderer.h"
 
+#include <array>
+
 #ifdef _MSC_VER
 #include <xmmintrin.h>
 #endif
@@ -254,14 +256,20 @@ private:
 	LPDIRECT3DDEVICE9	m_d3d_device;
 
 	VertexBuffer*		m_vertexBuffer;
-	IndexBuffer*		m_indexBuffer;
+	IndexBuffer*		m_indexBuffer = nullptr;
+	IndexBuffer*		m_indexBufferForWireframe = nullptr;
 	int32_t				m_squareMaxCount;
+
+	int32_t				drawcallCount = 0;
+	int32_t				drawvertexCount = 0;
 
 	Shader*							m_shader;
 	Shader*							m_shader_no_texture;
 
 	Shader*							m_shader_distortion;
 	Shader*							m_shader_no_texture_distortion;
+
+	Shader*		currentShader = nullptr;
 
 	EffekseerRenderer::StandardRenderer<RendererImplemented, Shader, Vertex, VertexDistortion>*	m_standardRenderer;
 
@@ -273,6 +281,9 @@ private:
 	::Effekseer::Matrix44	m_proj;
 	::Effekseer::Matrix44	m_camera;
 	::Effekseer::Matrix44	m_cameraProj;
+
+	::Effekseer::Vector3D	m_cameraPosition;
+	::Effekseer::Vector3D	m_cameraFrontDirection;
 
 	// 座標系
 	::Effekseer::CoordinateSystem		m_coordinateSystem;
@@ -292,6 +303,11 @@ private:
 	DWORD	m_state_D3DRS_SRCBLEND;
 	DWORD	m_state_D3DRS_ALPHAREF;
 
+	DWORD	m_state_D3DRS_DESTBLENDALPHA;
+	DWORD	m_state_D3DRS_SRCBLENDALPHA;
+	DWORD	m_state_D3DRS_SEPARATEALPHABLENDENABLE;
+	DWORD	m_state_D3DRS_BLENDOPALPHA;
+
 	DWORD	m_state_D3DRS_ZENABLE;
 	DWORD	m_state_D3DRS_ZWRITEENABLE;
 	DWORD	m_state_D3DRS_ALPHATESTENABLE;
@@ -300,6 +316,12 @@ private:
 	DWORD	m_state_D3DRS_COLORVERTEX;
 	DWORD	m_state_D3DRS_LIGHTING;
 	DWORD	m_state_D3DRS_SHADEMODE;
+
+	std::array<DWORD, 4>	m_state_D3DSAMP_MAGFILTER;
+	std::array<DWORD, 4>	m_state_D3DSAMP_MINFILTER;
+	std::array<DWORD, 4>	m_state_D3DSAMP_MIPFILTER;
+	std::array<DWORD, 4>	m_state_D3DSAMP_ADDRESSU;
+	std::array<DWORD, 4>	m_state_D3DSAMP_ADDRESSV;
 
 	IDirect3DVertexShader9*			m_state_vertexShader;
 	IDirect3DPixelShader9*			m_state_pixelShader;
@@ -311,13 +333,18 @@ private:
 
 	IDirect3DIndexBuffer9*	m_state_IndexData;
 
-	IDirect3DBaseTexture9*	m_state_pTexture;
+	std::vector<float>	m_state_VertexShaderConstantF;
+	std::vector<float>	m_state_PixelShaderConstantF;
+
+	std::array<IDirect3DBaseTexture9*, 2>	m_state_pTexture;
 
 	bool	m_isChangedDevice;
 
 	bool	m_restorationOfStates;
 
 	EffekseerRenderer::DistortingCallback* m_distortingCallback;
+
+	Effekseer::RenderMode m_renderMode = Effekseer::RenderMode::Normal;
 
 public:
 	/**
@@ -368,6 +395,11 @@ public:
 	IndexBuffer* GetIndexBuffer();
 
 	/**
+		@brief	インデックスバッファ取得
+	*/
+	IndexBuffer* GetIndexBufferForWireframe();
+
+	/**
 		@brief	最大描画スプライト数
 	*/
 	int32_t GetSquareMaxCount() const;
@@ -382,7 +414,7 @@ public:
 	/**
 		@brief	ライトの方向を設定する。
 	*/
-	void SetLightDirection( ::Effekseer::Vector3D& direction );
+	void SetLightDirection( const ::Effekseer::Vector3D& direction );
 
 	/**
 		@brief	ライトの色を取得する。
@@ -392,7 +424,7 @@ public:
 	/**
 		@brief	ライトの色を設定する。
 	*/
-	void SetLightColor( ::Effekseer::Color& color );
+	void SetLightColor( const ::Effekseer::Color& color );
 
 	/**
 		@brief	ライトの環境光の色を取得する。
@@ -402,7 +434,7 @@ public:
 	/**
 		@brief	ライトの環境光の色を設定する。
 	*/
-	void SetLightAmbientColor( ::Effekseer::Color& color );
+	void SetLightAmbientColor( const ::Effekseer::Color& color );
 
 	/**
 		@brief	投影行列を取得する。
@@ -428,6 +460,12 @@ public:
 		@brief	カメラプロジェクション行列を取得する。
 	*/
 	::Effekseer::Matrix44& GetCameraProjectionMatrix();
+
+	::Effekseer::Vector3D GetCameraFrontDirection() const override;
+
+	::Effekseer::Vector3D GetCameraPosition() const  override;
+
+	void SetCameraParameter(const ::Effekseer::Vector3D& front, const ::Effekseer::Vector3D& position)  override;
 
 	/**
 		@brief	スプライトレンダラーを生成する。
@@ -467,7 +505,11 @@ public:
 	/**
 	@brief	背景を取得する。
 	*/
-	Effekseer::TextureData* GetBackground() override { return &m_background; }
+	Effekseer::TextureData* GetBackground() override 
+	{
+		if (m_background.UserPtr == nullptr) return nullptr;
+		return &m_background;
+	}
 
 	/**
 	@brief	背景を設定する。
@@ -477,6 +519,18 @@ public:
 	EffekseerRenderer::DistortingCallback* GetDistortingCallback() override;
 
 	void SetDistortingCallback(EffekseerRenderer::DistortingCallback* callback) override;
+
+	/**
+	@brief	描画モードを設定する。
+	*/
+	void SetRenderMode( Effekseer::RenderMode renderMode ) override
+	{
+		m_renderMode = renderMode;
+	}
+	Effekseer::RenderMode GetRenderMode() override
+	{
+		return m_renderMode;
+	}
 
 	EffekseerRenderer::StandardRenderer<RendererImplemented, Shader, Vertex, VertexDistortion>* GetStandardRenderer() { return m_standardRenderer; }
 
@@ -489,8 +543,13 @@ public:
 	void DrawSprites( int32_t spriteCount, int32_t vertexOffset );
 	void DrawPolygon( int32_t vertexCount, int32_t indexCount);
 
+	Shader* GetShader(bool useTexture, bool useDistortion) const;
 	void BeginShader(Shader* shader);
 	void EndShader(Shader* shader);
+
+	void SetVertexBufferToShader(const void* data, int32_t size);
+
+	void SetPixelBufferToShader(const void* data, int32_t size);
 
 	void SetTextures(Shader* shader, Effekseer::TextureData** textures, int32_t count);
 
@@ -498,9 +557,20 @@ public:
 
 	void ResetRenderState();
 
+	int32_t GetDrawCallCount() const override;
+
+	int32_t GetDrawVertexCount() const override;
+
+	void ResetDrawCallCount() override;
+
+	void ResetDrawVertexCount() override;
+
 	virtual int GetRef() { return ::Effekseer::ReferenceObject::GetRef(); }
 	virtual int AddRef() { return ::Effekseer::ReferenceObject::AddRef(); }
 	virtual int Release() { return ::Effekseer::ReferenceObject::Release(); }
+
+private:
+	void GenerateIndexData();
 };
 
 //----------------------------------------------------------------------------------

@@ -9,7 +9,6 @@
 #include "Effekseer.Manager.h"
 #include "Effekseer.Matrix43.h"
 #include "Effekseer.Matrix44.h"
-#include "Effekseer.CriticalSection.h"
 #include "Culling/Culling3D.h"
 
 //----------------------------------------------------------------------------------
@@ -92,8 +91,8 @@ private:
 			, IsShown					( true )
 			, IsRemoving				( false )
 			, IsParameterChanged		( false )
-			, RemovingCallback			( NULL )
 			, DoUseBaseMatrix			( false )
+			, RemovingCallback			(NULL)
 			, Speed						( 1.0f )
 			, Self						( -1 )
 		{
@@ -144,8 +143,8 @@ private:
 	std::vector<DrawSet>		m_renderingDrawSets;
 	std::map<Handle,DrawSet>	m_renderingDrawSetMaps;
 
-	/* 描画セッション */
-	CriticalSection				m_renderingSession;
+	// mutex for rendering
+	std::mutex					m_renderingMutex;
 
 	/* 設定インスタンス */
 	Setting*					m_setting;
@@ -471,6 +470,8 @@ public:
 	*/
 	void SetScale( Handle handle, float x, float y, float z );
 
+	void SetAllColor(Handle handle, Color color) override;
+
 	// エフェクトのターゲット位置を指定する。
 	void SetTargetLocation( Handle handle, float x, float y, float z );
 	void SetTargetLocation( Handle handle, const Vector3D& location );
@@ -486,10 +487,22 @@ public:
 	*/
 	void SetRemovingCallback( Handle handle, EffectInstanceRemovingCallback callback );
 
+	bool GetShown(Handle handle);
+
 	void SetShown( Handle handle, bool shown );
+	
+	bool GetPaused(Handle handle);
+
 	void SetPaused( Handle handle, bool paused );
+
+	void SetPausedToAllEffects(bool paused);
+
+	float GetSpeed(Handle handle) const override;
+
 	void SetSpeed( Handle handle, float speed );
+	
 	void SetAutoDrawing( Handle handle, bool autoDraw );
+	
 	void Flip();
 
 	/**
@@ -528,17 +541,21 @@ public:
 	/**
 		@brief	描画処理
 	*/
-	void Draw();
+	void Draw() override;
 	
-	/**
-		@brief	ハンドル単位の描画処理
-	*/
-	void DrawHandle( Handle handle );
+	void DrawBack() override;
 
-	/**
-		@brief	再生
-	*/
+	void DrawFront() override;
+
+	void DrawHandle( Handle handle ) override;
+
+	void DrawHandleBack(Handle handle) override;
+
+	void DrawHandleFront(Handle handle) override;
+
 	Handle Play( Effect* effect, float x, float y, float z );
+
+	Handle Play(Effect* effect, const Vector3D& position, int32_t startFrame) override;
 	
 	/**
 		@brief	Update処理時間を取得。

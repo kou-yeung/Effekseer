@@ -2,8 +2,6 @@
 #ifndef	__EFFEKSEER_SERVER_IMPLEMENTED_H__
 #define	__EFFEKSEER_SERVER_IMPLEMENTED_H__
 
-#if !( defined(_PSVITA) || defined(_PS4) || defined(_SWITCH) || defined(_XBOXONE) )
-
 //----------------------------------------------------------------------------------
 // Include
 //----------------------------------------------------------------------------------
@@ -11,8 +9,6 @@
 #include "Effekseer.Server.h"
 
 #include "Effekseer.Socket.h"
-#include "Effekseer.Thread.h"
-#include "Effekseer.CriticalSection.h"
 
 #include <string>
 
@@ -33,7 +29,7 @@ private:
 	class InternalClient
 	{
 	public:
-		Thread		m_threadRecv;
+		std::thread		m_threadRecv;
 		EfkSocket	m_socket;
 		ServerImplemented*		m_server;
 		bool		m_active;
@@ -41,7 +37,7 @@ private:
 		std::vector<uint8_t>	m_recvBuffer;
 
 		std::vector<std::vector<uint8_t> >	m_recvBuffers;
-		CriticalSection						m_ctrlRecvBuffers;
+		std::mutex						m_ctrlRecvBuffers;
 
 		static void RecvAsync( void* data );
 
@@ -55,17 +51,17 @@ private:
 	EfkSocket	m_socket;
 	uint16_t	m_port;
 
-	Thread		m_thread;
-	CriticalSection		m_ctrlClients;
+	std::thread		m_thread;
+	std::mutex		m_ctrlClients;
 
 	bool		m_running;
 
 	std::set<InternalClient*>	m_clients;
 	std::set<InternalClient*>	m_removedClients;
 
-	std::map<std::wstring,Effect*>	m_effects;
+	std::map<std::u16string,Effect*>	m_effects;
 
-	std::map<std::wstring,std::vector<uint8_t> >	m_data;
+	std::map<std::u16string,std::vector<uint8_t> >	m_data;
 
 	std::vector<EFK_CHAR>	m_materialPath;
 
@@ -79,15 +75,17 @@ public:
 	virtual ~ServerImplemented();
 
 	/**
-		@brief	サーバーを開始する。
+	@brief
+	\~Japanese	サーバーを開始する。
+	\~English	Start a server
 	*/
 	bool Start( uint16_t port );
 
 	void Stop();
 
-	void Regist( const EFK_CHAR* key, Effect* effect );
+	void Register( const EFK_CHAR* key, Effect* effect );
 
-	void Unregist( Effect* effect );
+	void Unregister( Effect* effect );
 
 	void Update();
 
@@ -102,6 +100,4 @@ public:
 //
 //----------------------------------------------------------------------------------
 
-#endif	// #if !( defined(_PSVITA) || defined(_PS4) || defined(_SWITCH) || defined(_XBOXONE) )
-
-#endif	// __EFFEKSEER_SERVER_IMPLEMENTED_H__
+#endif

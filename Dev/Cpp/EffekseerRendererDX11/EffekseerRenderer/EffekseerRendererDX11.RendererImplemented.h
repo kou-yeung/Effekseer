@@ -301,13 +301,19 @@ private:
 
 	VertexBuffer*		m_vertexBuffer;
 	IndexBuffer*		m_indexBuffer;
+	IndexBuffer*		m_indexBufferForWireframe = nullptr;
 	int32_t				m_squareMaxCount;
+
+	int32_t				drawcallCount = 0;
+	int32_t				drawvertexCount = 0;
 
 	Shader*							m_shader;
 	Shader*							m_shader_no_texture;
 
 	Shader*							m_shader_distortion;
 	Shader*							m_shader_no_texture_distortion;
+
+	Shader*		currentShader = nullptr;
 
 	EffekseerRenderer::StandardRenderer<RendererImplemented, Shader, Vertex, VertexDistortion>*	m_standardRenderer;
 
@@ -318,6 +324,9 @@ private:
 	::Effekseer::Matrix44	m_proj;
 	::Effekseer::Matrix44	m_camera;
 	::Effekseer::Matrix44	m_cameraProj;
+
+	::Effekseer::Vector3D	m_cameraPosition;
+	::Effekseer::Vector3D	m_cameraFrontDirection;
 
 	// 座標系
 	::Effekseer::CoordinateSystem			m_coordinateSystem;
@@ -336,6 +345,8 @@ private:
 	D3D11_COMPARISON_FUNC	m_depthFunc;
 
 	EffekseerRenderer::DistortingCallback* m_distortingCallback;
+
+	Effekseer::RenderMode m_renderMode = Effekseer::RenderMode::Normal;
 
 public:
 	/**
@@ -373,12 +384,12 @@ public:
 	/**
 		@brief	デバイス取得
 	*/
-	ID3D11Device* GetDevice();
+	ID3D11Device* GetDevice() override;
 
 	/**
 		@brief	コンテキスト取得
 	*/
-	ID3D11DeviceContext* GetContext();
+	ID3D11DeviceContext* GetContext() override;
 
 	/**
 		@brief	頂点バッファ取得
@@ -405,7 +416,7 @@ public:
 	/**
 		@brief	ライトの方向を設定する。
 	*/
-	void SetLightDirection( ::Effekseer::Vector3D& direction );
+	void SetLightDirection( const ::Effekseer::Vector3D& direction );
 
 	/**
 		@brief	ライトの色を取得する。
@@ -415,7 +426,7 @@ public:
 	/**
 		@brief	ライトの色を設定する。
 	*/
-	void SetLightColor( ::Effekseer::Color& color );
+	void SetLightColor( const ::Effekseer::Color& color );
 
 	/**
 		@brief	ライトの環境光の色を取得する。
@@ -425,7 +436,7 @@ public:
 	/**
 		@brief	ライトの環境光の色を設定する。
 	*/
-	void SetLightAmbientColor( ::Effekseer::Color& color );
+	void SetLightAmbientColor( const ::Effekseer::Color& color );
 
 	/**
 		@brief	投影行列を取得する。
@@ -446,6 +457,12 @@ public:
 		@brief	カメラ行列を設定する。
 	*/
 	void SetCameraMatrix( const ::Effekseer::Matrix44& mat );
+
+	::Effekseer::Vector3D GetCameraFrontDirection() const override;
+
+	::Effekseer::Vector3D GetCameraPosition() const  override;
+
+	void SetCameraParameter(const ::Effekseer::Vector3D& front, const ::Effekseer::Vector3D& position)  override;
 
 	/**
 		@brief	カメラプロジェクション行列を取得する。
@@ -490,7 +507,7 @@ public:
 	/**
 	@brief	背景を取得する。
 	*/
-	Effekseer::TextureData* GetBackground() override { return &m_background; }
+	Effekseer::TextureData* GetBackground() override;
 
 	/**
 		@brief	背景を設定する。
@@ -512,12 +529,29 @@ public:
 	void DrawSprites( int32_t spriteCount, int32_t vertexOffset );
 	void DrawPolygon( int32_t vertexCount, int32_t indexCount);
 
+	Shader* GetShader(bool useTexture, bool useDistortion) const;
 	void BeginShader(Shader* shader);
 	void EndShader(Shader* shader);
+
+	void SetVertexBufferToShader(const void* data, int32_t size);
+
+	void SetPixelBufferToShader(const void* data, int32_t size);
 
 	void SetTextures(Shader* shader, Effekseer::TextureData** textures, int32_t count);
 
 	void ResetRenderState();
+
+	int32_t GetDrawCallCount() const override;
+
+	int32_t GetDrawVertexCount() const override;
+
+	void ResetDrawCallCount() override;
+
+	void ResetDrawVertexCount() override;
+
+	void SetRenderMode(Effekseer::RenderMode renderMode) override { m_renderMode = renderMode; }
+
+	Effekseer::RenderMode GetRenderMode() override { printf("Not implemented.\n"); return m_renderMode; }
 
 	virtual int GetRef() { return ::Effekseer::ReferenceObject::GetRef(); }
 	virtual int AddRef() { return ::Effekseer::ReferenceObject::AddRef(); }

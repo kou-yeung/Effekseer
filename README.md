@@ -33,45 +33,34 @@ Effekseer主要用作遊戲開發,不僅是程序員而且設計師也可進行�
 Todo
 =========
 
-Please read issues and wishlist. We always welcome pull requests for improvements, bug fixes, and so on.
+Please read issues, Trello and TODO. We always welcome pull requests for improvements, bug fixes, and so on.
 
-issuesとwishlistを読んでください。常時、機能追加、バグ修正といったプルリクエストを募集しております。
+issues、TrelloとTODOを読んでください。常時、機能追加、バグ修正といったプルリクエストを募集しております。
 
 [Issues](https://github.com/effekseer/Effekseer/issues)
 
-[Wishlist](https://trello.com/b/APLk8e6V/effekseer-wishlist)
+[Trello](https://trello.com/b/APLk8e6V/effekseer-wishlist)
 
 # RoadMap
-
-## 1.3 Finished
-* Add some icons to Editor GUI
-* File viewer
-
-## 1.3 Todo
-* Integrate FBX and mqo importer.
-* Show the number of draw call.
-* For UnrealEngine4
-* For Cocos2d-x
-* Documents
 
 # Todo
 
 ** Easy **
-* Add Samples
-* Add Documents
-* Add Tests
+* Add samples (サンプルの追加)
+* Add tutorial documents (チュートリアルのドキュメントの追加)
+* Add tests for a runtime (ランタイムのテストの追加)
+* Translate documents from Japanese into English (ドキュメントの日本語から英語への翻訳)
 
 ** Medium
 * Add model exporters for 3D modeling softwares
 * HDR Color
 * Bloom Postprocess in Editor
-* Effectのパラメーターの動的な変更
+* Dynamically changing parameters of Effect from a runtime
 
 ** Hard
 * Support Metal
 * Support DirectX12
-* ツールのGUIライブラリの変更
-* ツールのマルチプラットフォーム化
+* Node material
 
 ** VeryHard
 * Support Vulkan
@@ -79,18 +68,87 @@ issuesとwishlistを読んでください。常時、機能追加、バグ修正
 
 ** Others
 * New method of rotation to match Z and moving direction.
-* タービュランスノイズ ( https://ics.media/entry/10921 )
-* Change color on the runtime.
+* Turbulence noise ( https://ics.media/entry/10921 )
 
-# コミッター向け
+# For contributor
 
-## ランタイムテスト方法
+## How to compile
+
+This project requires as follows
+
+```
+git
+git-lfs
+cmake
+python3.x
+```
+
+On Mac
+
+```
+g++
+mono
+VisualStudio For Mac2017
+```
+
+On Linux
+
+```
+g++
+mono-devel
+libx11-dev libgl1-mesa-dev libxrandr-dev libxi-dev x11proto-xf86vidmode-dev xorg-dev libglu1-mesa-dev libpulse-dev libgtk-3-dev
+```
+
+Update submodule.
+
+```
+git submodule update --init
+```
+
+Execute python scripts as follows.
+
+```
+
+Script/build_libgd.py
+
+Script/build_libpng.py
+
+Script/build_glfw.py
+
+Script/build_OpenSoundMixer.py
+
+```
+
+Execute python scripts as follows. (Windows only)
+
+```
+
+Script/build_glew.py
+
+```
 
 * Windows
 
-```Dev/Cpp/Test.sln``` を実行する。
+Visual Studio 2015 are required.
+
+Open ```Dev/Editor/Effekseer.sln```
+
+or
+
+Open ```Dev/Cpp/Test.sln```
+
+* Mac
+
+Execute ```Dev/build.Mac.sh``` to compile and generate binary into Dev/release/
+
+Execute ```Dev/package.Mac.sh``` to generate app into Dev/Mac/
+
+or
+
+Use cmake to ```Dev/Cpp/CMakeLists.txt```
 
 * Linux
 
-```Dev/Cpp/build.sh``` を実行する。
-```Dev/Cpp/Test/CMakeLists.txt``` をcmakeを使用してmakeを生成しコンパイルする。
+Execute ```Dev/build.Linux.sh``` to compile and generate binary into Dev/release/
+
+I have not debug Effekseer on Linux yet.

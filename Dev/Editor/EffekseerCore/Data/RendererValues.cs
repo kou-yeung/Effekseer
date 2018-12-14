@@ -189,22 +189,6 @@ namespace Effekseer.Data
 				ColorTexture = new Value.Path("画像ファイル (*.png)|*.png", true, "");
 			}
 
-			public enum BillboardType : int
-			{
-				[Name(value = "ビルボード", language = Language.Japanese)]
-				[Name(value = "Billboard", language = Language.English)]
-				Billboard = 0,
-				[Name(value = "Z軸回転ビルボード", language = Language.Japanese)]
-				[Name(value = "Rotated Billboard", language = Language.English)]
-				RotatedBillboard = 3,
-				[Name(value = "Y軸固定", language = Language.Japanese)]
-				[Name(value = "Fixed Y-Axis", language = Language.English)]
-				YAxisFixed = 1,
-				[Name(value = "固定", language = Language.Japanese)]
-				[Name(value = "Fixed", language = Language.English)]
-				Fixed = 2,
-			}
-
             public enum ColorType : int
             {
                 [Name(value = "標準", language = Language.Japanese)]
@@ -283,6 +267,15 @@ namespace Effekseer.Data
 			[Name(language = Language.English, value = "Right Coord")]
 			public Value.Float Position_Fixed_R { get; private set; }
 
+			[Name(language = Language.Japanese, value = "スプラインの分割数")]
+			[Description(language = Language.Japanese, value = "スプラインの分割数")]
+			[Name(language = Language.English, value = "The number of \nspline division")]
+			[Description(language = Language.English, value = "The number of spline division")]
+			public Value.Int SplineDivision
+			{
+				get;
+				private set;
+			}
 
 			[Name(language = Language.Japanese, value = "色画像")]
 			[Description(language = Language.Japanese, value = "リボンの色を表す画像")]
@@ -314,7 +307,9 @@ namespace Effekseer.Data
 				Position_Fixed_L = new Value.Float(-0.5f);
 				Position_Fixed_R = new Value.Float(0.5f);
 
-                ColorTexture = new Value.Path(Properties.Resources.ImageFilter, true, "");
+				SplineDivision = new Value.Int(1, int.MaxValue, 1);
+
+				ColorTexture = new Value.Path(Resources.GetString("ImageFilter"), true, "");
 			}
 
             public enum ColorAllType : int
@@ -539,23 +534,7 @@ namespace Effekseer.Data
                 InnerColor_Random = new Value.ColorWithRandom(255, 255, 255, 0);
                 InnerColor_Easing = new ColorEasingParamater();
 
-                ColorTexture = new Value.Path(Properties.Resources.ImageFilter, true, "");
-            }
-
-            public enum BillboardType : int
-            {
-                [Name(value = "ビルボード", language = Language.Japanese)]
-				[Name(value = "Billboard", language = Language.English)]
-                Billboard = 0,
-				[Name(value = "Z軸回転ビルボード", language = Language.Japanese)]
-				[Name(value = "Rotated Billboard", language = Language.English)]
-                RotatedBillboard = 3,
-                [Name(value = "Y軸固定", language = Language.Japanese)]
-				[Name(value = "Fixed Y-Axis", language = Language.English)]
-                YAxisFixed = 1,
-                [Name(value = "固定", language = Language.Japanese)]
-				[Name(value = "Fixed", language = Language.English)]
-                Fixed = 2,
+                ColorTexture = new Value.Path(Resources.GetString("ImageFilter"), true, "");
             }
 
             public enum ViewingAngleType : int
@@ -675,7 +654,7 @@ namespace Effekseer.Data
 			[Description(language = Language.Japanese, value = "モデルファイル")]
 			[Name(language = Language.English, value = "Model")]
 			[Description(language = Language.English, value = "Model File")]
-			public Value.Path Model
+			public Value.PathForModel Model
 			{
 				get;
 				private set;
@@ -691,6 +670,10 @@ namespace Effekseer.Data
 				private set;
 			}
 
+			[Name(language = Language.Japanese, value = "配置方法")]
+			[Name(language = Language.English, value = "Configuration")]
+			public Value.Enum<BillboardType> Billboard { get; private set; }
+
 			[Name(language = Language.Japanese, value = "ライティング")]
 			[Name(language = Language.English, value = "Lighting")]
 			public Value.Boolean Lighting { get; private set; }
@@ -701,9 +684,11 @@ namespace Effekseer.Data
 
 			public ModelParamater()
 			{
-                Model = new Value.Path(Properties.Resources.ModelFilter, true, "");
-                NormalTexture = new Value.PathForImage(Properties.Resources.ImageFilter, true, "");
-				
+                Model = new Value.PathForModel(Resources.GetString("ModelFilter"), true, "");
+                NormalTexture = new Value.PathForImage(Resources.GetString("ImageFilter"), true, "");
+
+				Billboard = new Value.Enum<BillboardType>(BillboardType.Fixed);
+
 				Lighting = new Value.Boolean(true);
 				Culling = new Value.Enum<CullingValues>(Data.CullingValues.Front);
 
@@ -758,6 +743,16 @@ namespace Effekseer.Data
 
 			[Selected(ID = 12, Value = 0)]
 			public Value.Float TrackSizeBack_Fixed { get; private set; }
+
+			[Name(language = Language.Japanese, value = "スプラインの分割数")]
+			[Description(language = Language.Japanese, value = "スプラインの分割数")]
+			[Name(language = Language.English, value = "The number of \nspline division")]
+			[Description(language = Language.English, value = "The number of spline division")]
+			public Value.Int SplineDivision
+			{
+				get;
+				private set;
+			}
 
 			[Selector(ID = 1)]
 			[Name(language = Language.Japanese, value = "色・左")]
@@ -818,7 +813,7 @@ namespace Effekseer.Data
 
 			[Selector(ID = 4)]
 			[Name(language = Language.Japanese, value = "色・中央中間")]
-			[Name(language = Language.English, value = "Color, Center-Middle")]
+			[Name(language = Language.English, value = "Color, Center-Mid.")]
 			public Value.Enum<StandardColorType> ColorCenterMiddle { get; private set; }
 
 			[Selected(ID = 4, Value = 0)]
@@ -873,6 +868,7 @@ namespace Effekseer.Data
 			[IO(Export = true)]
 			public ColorFCurveParameter ColorRightMiddle_FCurve { get; private set; }
 
+			
 			public TrackParameter()
 			{
 				TrackSizeFor = new Value.Enum<TrackSizeType>(TrackSizeType.Fixed);
@@ -920,7 +916,24 @@ namespace Effekseer.Data
 				ColorRightMiddle_Easing = new ColorEasingParamater();
 				ColorRightMiddle_FCurve = new ColorFCurveParameter();
 
+				SplineDivision = new Value.Int(1, int.MaxValue, 1);
 			}
+		}
+
+		public enum BillboardType : int
+		{
+			[Name(value = "ビルボード", language = Language.Japanese)]
+			[Name(value = "Billboard", language = Language.English)]
+			Billboard = 0,
+			[Name(value = "Z軸回転ビルボード", language = Language.Japanese)]
+			[Name(value = "Rotated Billboard", language = Language.English)]
+			RotatedBillboard = 3,
+			[Name(value = "Y軸固定", language = Language.Japanese)]
+			[Name(value = "Fixed Y-Axis", language = Language.English)]
+			YAxisFixed = 1,
+			[Name(value = "固定", language = Language.Japanese)]
+			[Name(value = "Fixed", language = Language.English)]
+			Fixed = 2,
 		}
 
 		public enum ParamaterType : int

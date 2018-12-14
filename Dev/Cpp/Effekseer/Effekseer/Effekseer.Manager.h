@@ -24,7 +24,7 @@ class Manager
 {
 protected:
 	Manager() {}
-    ~Manager() {}
+    virtual ~Manager() {}
 
 public:
 	/**
@@ -313,6 +313,13 @@ public:
 	virtual void SetScale( Handle handle, float x, float y, float z ) = 0;
 
 	/**
+	@brief
+		\~English	Specify the color of overall effect.
+		\~Japanese	エフェクト全体の色を指定する。
+	*/
+	virtual void SetAllColor(Handle handle, Color color) = 0;
+
+	/**
 		@brief	エフェクトのインスタンスのターゲット位置を指定する。
 		@param	x	[in]	X座標
 		@param	y	[in]	Y座標
@@ -350,6 +357,15 @@ public:
 	virtual void SetRemovingCallback( Handle handle, EffectInstanceRemovingCallback callback ) = 0;
 
 	/**
+	@brief	\~English	Get status that a particle of effect specified is shown.
+	\~Japanese	指定したエフェクトのパーティクルが表示されているか取得する。
+
+	@param	handle	\~English	Particle's handle
+	\~Japanese	パーティクルのハンドル
+	*/
+	virtual bool GetShown(Handle handle) = 0;
+
+	/**
 		@brief	エフェクトのインスタンスをDraw時に描画するか設定する。
 		@param	handle	[in]	インスタンスのハンドル
 		@param	shown	[in]	描画するか?
@@ -357,11 +373,43 @@ public:
 	virtual void SetShown( Handle handle, bool shown ) = 0;
 
 	/**
-		@brief	エフェクトのインスタンスをUpdate時に更新するか設定する。
+	@brief	\~English	Get status that a particle of effect specified is paused.
+	\~Japanese	指定したエフェクトのパーティクルが一時停止されているか取得する。
+
+	@param	handle	\~English	Particle's handle
+			\~Japanese	パーティクルのハンドル
+	*/
+	virtual bool GetPaused(Handle handle) = 0;
+
+	/**
+		@brief	\~English	Pause or resume a particle of effect specified.
+		\~Japanese	指定したエフェクトのパーティクルを一時停止、もしくは再開する。
+
 		@param	handle	[in]	インスタンスのハンドル
 		@param	paused	[in]	更新するか?
 	*/
 	virtual void SetPaused( Handle handle, bool paused ) = 0;
+
+	/**
+			@brief	\~English	Pause or resume all particle of effects.
+			\~Japanese	全てのエフェクトのパーティクルを一時停止、もしくは再開する。
+			@param	paused \~English	Pause or resume
+			\~Japanese	一時停止、もしくは再開
+	*/
+	virtual void SetPausedToAllEffects(bool paused) = 0;
+
+	/**
+	@brief
+	\~English	Get a playing speed of particle of effect.
+	\~Japanese	エフェクトのパーティクルの再生スピードを取得する。
+	@param	handle
+	\~English	Particle's handle
+	\~Japanese	パーティクルのハンドル
+	@return
+	\~English	Speed
+	\~Japanese	スピード
+	*/
+	virtual float GetSpeed(Handle handle) const = 0;
 
 	/**
 		@brief	エフェクトのインスタンスを再生スピードを設定する。
@@ -412,14 +460,46 @@ public:
 	virtual void UpdateHandle( Handle handle, float deltaFrame = 1.0f ) = 0;
 
 	/**
-		@brief	描画処理を行う。
+	@brief	
+	\~English	Draw particles.
+	\~Japanese	描画処理を行う。
 	*/
 	virtual void Draw() = 0;
 	
 	/**
-		@brief	ハンドル単位の描画処理を行う。
+	@brief
+	\~English	Draw particles in the back of priority 0.
+	\~Japanese	背面の描画処理を行う。
+	*/
+	virtual void DrawBack() = 0;
+
+	/**
+	@brief
+	\~English	Draw particles in the front of priority 0.
+	\~Japanese	前面の描画処理を行う。
+	*/
+	virtual void DrawFront() = 0;
+
+	/**
+	@brief
+	\~English	Draw particles with a handle.
+	\~Japanese	ハンドル単位の描画処理を行う。
 	*/
 	virtual void DrawHandle( Handle handle ) = 0;
+
+	/**
+	@brief
+	\~English	Draw particles in the back of priority 0.
+	\~Japanese	背面のハンドル単位の描画処理を行う。
+	*/
+	virtual void DrawHandleBack(Handle handle) = 0;
+	
+	/**
+	@brief
+	\~English	Draw particles in the front of priority 0.
+	\~Japanese	前面のハンドル単位の描画処理を行う。
+	*/
+	virtual void DrawHandleFront(Handle handle) = 0;
 
 	/**
 		@brief	再生する。
@@ -431,6 +511,22 @@ public:
 	*/
 	virtual Handle Play( Effect* effect, float x, float y, float z ) = 0;
 	
+	/**
+		@brief
+		\~English	Play an effect.
+		\~Japanese	エフェクトを再生する。
+		@param	effect
+		\~English	Played effect
+		\~Japanese	再生されるエフェクト
+		@param	position
+		\~English	Initial position
+		\~Japanese	初期位置
+		@param	startFrame
+		\~English	A time to play from middle
+		\~Japanese	途中から再生するための時間
+	*/
+	virtual Handle Play(Effect* effect, const Vector3D& position, int32_t startFrame = 0) = 0;
+
 	/**
 		@brief	Update処理時間を取得。
 	*/

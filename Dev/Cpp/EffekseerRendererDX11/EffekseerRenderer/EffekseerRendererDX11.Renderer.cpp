@@ -87,10 +87,10 @@ namespace StandardNoTexture_Distortion_PS
 //-----------------------------------------------------------------------------------
 //
 //-----------------------------------------------------------------------------------
-::Effekseer::TextureLoader* CreateTextureLoader(ID3D11Device* device, ::Effekseer::FileInterface* fileInterface)
+::Effekseer::TextureLoader* CreateTextureLoader(ID3D11Device* device, ID3D11DeviceContext* context, ::Effekseer::FileInterface* fileInterface)
 {
 #ifdef __EFFEKSEER_RENDERER_INTERNAL_LOADER__
-	return new TextureLoader(device, fileInterface);
+	return new TextureLoader(device, context, fileInterface);
 #else
 	return NULL;
 #endif
@@ -303,8 +303,9 @@ RendererImplemented::~RendererImplemented()
 	ES_SAFE_DELETE( m_renderState );
 	ES_SAFE_DELETE( m_vertexBuffer );
 	ES_SAFE_DELETE( m_indexBuffer );
+	ES_SAFE_DELETE(m_indexBufferForWireframe);
 
-	assert(GetRef() == -6);
+	assert(GetRef() == -7);
 }
 
 //----------------------------------------------------------------------------------
@@ -369,6 +370,32 @@ bool RendererImplemented::Initialize(ID3D11Device* device, ID3D11DeviceContext* 
 		}
 
 		m_indexBuffer->Unlock();
+	}
+
+	// 参照カウントの調整
+	Release();
+
+	// Generate index buffer for rendering wireframes
+	{
+		m_indexBufferForWireframe = IndexBuffer::Create(this, m_squareMaxCount * 8, false);
+		if (m_indexBufferForWireframe == NULL) return false;
+
+		m_indexBufferForWireframe->Lock();
+
+		for (int i = 0; i < m_squareMaxCount; i++)
+		{
+			uint16_t* buf = (uint16_t*)m_indexBufferForWireframe->GetBufferDirect(8);
+			buf[0] = 0 + 4 * i;
+			buf[1] = 1 + 4 * i;
+			buf[2] = 2 + 4 * i;
+			buf[3] = 3 + 4 * i;
+			buf[4] = 0 + 4 * i;
+			buf[5] = 2 + 4 * i;
+			buf[6] = 1 + 4 * i;
+			buf[7] = 3 + 4 * i;
+		}
+
+		m_indexBufferForWireframe->Unlock();
 	}
 
 	// 参照カウントの調整
@@ -564,7 +591,14 @@ VertexBuffer* RendererImplemented::GetVertexBuffer()
 //----------------------------------------------------------------------------------
 IndexBuffer* RendererImplemented::GetIndexBuffer()
 {
-	return m_indexBuffer;
+	if (m_renderMode == ::Effekseer::RenderMode::Wireframe)
+	{
+		return m_indexBufferForWireframe;
+	}
+	else
+	{
+		return m_indexBuffer;
+	}
 }
 
 //----------------------------------------------------------------------------------
@@ -594,7 +628,7 @@ const ::Effekseer::Vector3D& RendererImplemented::GetLightDirection() const
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
-void RendererImplemented::SetLightDirection( ::Effekseer::Vector3D& direction )
+void RendererImplemented::SetLightDirection( const ::Effekseer::Vector3D& direction )
 {
 	m_lightDirection = direction;
 }
@@ -610,7 +644,7 @@ const ::Effekseer::Color& RendererImplemented::GetLightColor() const
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
-void RendererImplemented::SetLightColor( ::Effekseer::Color& color )
+void RendererImplemented::SetLightColor( const ::Effekseer::Color& color )
 {
 	m_lightColor = color;
 }
@@ -626,7 +660,7 @@ const ::Effekseer::Color& RendererImplemented::GetLightAmbientColor() const
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
-void RendererImplemented::SetLightAmbientColor( ::Effekseer::Color& color )
+void RendererImplemented::SetLightAmbientColor( const ::Effekseer::Color& color )
 {
 	m_lightAmbient = color;
 }
@@ -658,8 +692,17 @@ const ::Effekseer::Matrix44& RendererImplemented::GetCameraMatrix() const
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
-void RendererImplemented::SetCameraMatrix( const ::Effekseer::Matrix44& mat )
+void RendererImplemented::SetCameraMatrix(const ::Effekseer::Matrix44& mat)
 {
+	m_cameraFrontDirection = ::Effekseer::Vector3D(mat.Values[0][2], mat.Values[1][2], mat.Values[2][2]);
+
+	auto localPos = ::Effekseer::Vector3D(-mat.Values[3][0], -mat.Values[3][1], -mat.Values[3][2]);
+	auto f = m_cameraFrontDirection;
+	auto r = ::Effekseer::Vector3D(mat.Values[0][0], mat.Values[1][0], mat.Values[2][0]);
+	auto u = ::Effekseer::Vector3D(mat.Values[0][1], mat.Values[1][1], mat.Values[2][1]);
+
+	m_cameraPosition = r * localPos.X + u * localPos.Y + f * localPos.Z;
+
 	m_camera = mat;
 }
 
@@ -669,6 +712,22 @@ void RendererImplemented::SetCameraMatrix( const ::Effekseer::Matrix44& mat )
 ::Effekseer::Matrix44& RendererImplemented::GetCameraProjectionMatrix()
 {
 	return m_cameraProj;
+}
+
+::Effekseer::Vector3D RendererImplemented::GetCameraFrontDirection() const
+{
+	return m_cameraFrontDirection;
+}
+
+::Effekseer::Vector3D RendererImplemented::GetCameraPosition() const
+{
+	return m_cameraPosition;
+}
+
+void RendererImplemented::SetCameraParameter(const ::Effekseer::Vector3D& front, const ::Effekseer::Vector3D& position)
+{
+	m_cameraFrontDirection = front;
+	m_cameraPosition = position;
 }
 
 //----------------------------------------------------------------------------------
@@ -717,7 +776,7 @@ void RendererImplemented::SetCameraMatrix( const ::Effekseer::Matrix44& mat )
 ::Effekseer::TextureLoader* RendererImplemented::CreateTextureLoader( ::Effekseer::FileInterface* fileInterface )
 {
 #ifdef __EFFEKSEER_RENDERER_INTERNAL_LOADER__
-	return new TextureLoader(this->GetDevice(), fileInterface );
+	return new TextureLoader(this->GetDevice(), this->GetContext(), fileInterface );
 #else
 	return NULL;
 #endif
@@ -733,6 +792,12 @@ void RendererImplemented::SetCameraMatrix( const ::Effekseer::Matrix44& mat )
 #else
 	return NULL;
 #endif
+}
+
+Effekseer::TextureData* RendererImplemented::GetBackground()
+{
+	if (m_background.UserPtr == nullptr) return nullptr;
+	return &m_background;
 }
 
 void RendererImplemented::SetBackground(ID3D11ShaderResourceView* background)
@@ -798,7 +863,15 @@ void RendererImplemented::SetIndexBuffer(ID3D11Buffer* indexBuffer)
 //----------------------------------------------------------------------------------
 void RendererImplemented::SetLayout( Shader* shader )
 {
-	GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	if (m_renderMode == Effekseer::RenderMode::Normal)
+	{
+		GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	}
+	else
+	{
+		GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+	}
+
 	GetContext()->IASetInputLayout( shader->GetLayoutInterface() );
 }
 
@@ -807,10 +880,23 @@ void RendererImplemented::SetLayout( Shader* shader )
 //----------------------------------------------------------------------------------
 void RendererImplemented::DrawSprites( int32_t spriteCount, int32_t vertexOffset )
 {
-	GetContext()->DrawIndexed(
-		spriteCount * 2 * 3,
-		0,
-		vertexOffset );
+	drawcallCount++;
+	drawvertexCount += spriteCount * 4;
+
+	if (m_renderMode == Effekseer::RenderMode::Normal)
+	{
+		GetContext()->DrawIndexed(
+			spriteCount * 2 * 3,
+			0,
+			vertexOffset);
+	}
+	else
+	{
+		GetContext()->DrawIndexed(
+			spriteCount * 2 * 4,
+			0,
+			vertexOffset);
+	}
 }
 
 //----------------------------------------------------------------------------------
@@ -818,17 +904,44 @@ void RendererImplemented::DrawSprites( int32_t spriteCount, int32_t vertexOffset
 //----------------------------------------------------------------------------------
 void RendererImplemented::DrawPolygon( int32_t vertexCount, int32_t indexCount)
 {
+	drawcallCount++;
+	drawvertexCount += vertexCount;
+
 	GetContext()->DrawIndexed(
 		indexCount,
 		0,
 		0 );
 }
 
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
+Shader* RendererImplemented::GetShader(bool useTexture, bool useDistortion) const
+{
+	if (useDistortion)
+	{
+		if (useTexture && m_renderMode == Effekseer::RenderMode::Normal)
+		{
+			return m_shader_distortion;
+		}
+		else
+		{
+			return m_shader_no_texture_distortion;
+		}
+	}
+	else
+	{
+		if (useTexture && m_renderMode == Effekseer::RenderMode::Normal)
+		{
+			return m_shader;
+		}
+		else
+		{
+			return m_shader_no_texture;
+		}
+	}
+}
+
 void RendererImplemented::BeginShader(Shader* shader)
 {
+	currentShader = shader;
 	GetContext()->VSSetShader( shader->GetVertexShader(), NULL, 0);
 	GetContext()->PSSetShader( shader->GetPixelShader(), NULL, 0);
 }
@@ -838,7 +951,17 @@ void RendererImplemented::BeginShader(Shader* shader)
 //----------------------------------------------------------------------------------
 void RendererImplemented::EndShader(Shader* shader)
 {
+	currentShader = nullptr;
+}
 
+void RendererImplemented::SetVertexBufferToShader(const void* data, int32_t size)
+{
+	memcpy(currentShader->GetVertexConstantBuffer(), data, size);
+}
+
+void RendererImplemented::SetPixelBufferToShader(const void* data, int32_t size)
+{
+	memcpy(currentShader->GetPixelConstantBuffer(), data, size);
 }
 
 //----------------------------------------------------------------------------------
@@ -861,13 +984,30 @@ void RendererImplemented::SetTextures(Shader* shader, Effekseer::TextureData** t
 	GetContext()->PSSetShaderResources(0, count, srv);
 }
 
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
 void RendererImplemented::ResetRenderState()
 {
 	m_renderState->GetActiveState().Reset();
 	m_renderState->Update( true );
+}
+
+int32_t RendererImplemented::GetDrawCallCount() const
+{
+	return drawcallCount;
+}
+
+int32_t RendererImplemented::GetDrawVertexCount() const
+{
+	return drawvertexCount;
+}
+
+void RendererImplemented::ResetDrawCallCount()
+{
+	drawcallCount = 0;
+}
+
+void RendererImplemented::ResetDrawVertexCount()
+{
+	drawvertexCount = 0;
 }
 
 //----------------------------------------------------------------------------------

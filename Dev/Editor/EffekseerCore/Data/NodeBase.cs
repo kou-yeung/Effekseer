@@ -60,22 +60,45 @@ namespace Effekseer.Data
 		}
 
 		/// <summary>
-		/// 子ノードの追加
+		/// Add child
 		/// </summary>
+		/// <param name="node">Added node (if null, generated automatically)</param>
+		/// <param name="index">inserted position</param>
 		/// <returns></returns>
-		public Node AddChild()
+		public Node AddChild(Node node = null, int index = int.MaxValue)
 		{
-			var node = new Node(this);
+			if(node == null)
+			{
+				node = new Node(this);
+			}
 
+			var old_parent = node.Parent;
+			var new_parent = this;
 			var old_value = children;
 			var new_value = new List<Node>(children);
-			new_value.Add(node);
+
+			if(index == int.MaxValue)
+			{
+				new_value.Add(node);
+			}
+			else
+			{
+				if(index >= children.Count)
+				{
+					new_value.Add(node);
+				}
+				else
+				{
+					new_value.Insert(index, node);
+				}
+			}
 
 			var cmd = new Command.DelegateCommand(
 				() =>
 				{
 					children = new_value;
-					
+					node.Parent = new_parent;
+
 					if (OnAfterAddNode != null)
 					{
 						OnAfterAddNode(this, new ChangedValueEventArgs(node, ChangedValueType.Execute));
@@ -84,6 +107,7 @@ namespace Effekseer.Data
 				() =>
 				{
 					children = old_value;
+					node.Parent = old_parent;
 
 					if (OnAfterRemoveNode != null)
 					{
@@ -215,7 +239,7 @@ namespace Effekseer.Data
 		}
 
 		/// <summary>
-		/// 子同士を交換
+		/// Exchange children each other
 		/// </summary>
 		/// <param name="node1"></param>
 		/// <param name="node2"></param>
@@ -329,6 +353,14 @@ namespace Effekseer.Data
 						return _node.children[index];
 					}
 					return null;
+				}
+			}
+
+			public List<Node> Internal
+			{
+				get
+				{
+					return _node.children;
 				}
 			}
 		}

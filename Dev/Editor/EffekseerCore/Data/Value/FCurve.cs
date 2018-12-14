@@ -8,18 +8,23 @@ namespace Effekseer.Data.Value
 	public enum FCurveEdge
 	{
 		[Name(language = Language.Japanese, value = "一定")]
+		[Name(language = Language.English, value = "Constant")]
 		Constant = 0,
 		[Name(language = Language.Japanese, value = "ループ")]
+		[Name(language = Language.English, value = "Loop")]
 		Loop = 1,
 		[Name(language = Language.Japanese, value = "逆ループ")]
+		[Name(language = Language.English, value = "Loop inversely")]
 		LoopInversely = 2,
 	}
 
 	public enum FCurveInterpolation
 	{
 		[Name(language = Language.Japanese, value = "ベジェ")]
+		[Name(language = Language.English, value = "Bezier")]
 		Bezier = 0,
 		[Name(language = Language.Japanese, value = "線形")]
+		[Name(language = Language.English, value = "Linear")]
 		Linear = 1,
 	}
 
@@ -76,6 +81,44 @@ namespace Effekseer.Data.Value
 			OffsetMin = new Float();
 
 			Sampling = new Int(5, int.MaxValue, 1, 1);
+		}
+
+		public void SetKeys(FCurveKey<T>[] keys)
+		{
+			var new_value = keys.ToList();
+			var old_value = this.keys.ToList();
+
+			var cmd = new Command.DelegateCommand(
+			() =>
+			{
+				this.keys = new_value;
+
+				foreach (var key in keys)
+				{
+					key.OnChangedKey += OnChangedKey;
+				}
+
+				if (OnChanged != null)
+				{
+					OnChanged(this, new ChangedValueEventArgs(new_value, ChangedValueType.Execute));
+				}
+			},
+			() =>
+			{
+				this.keys = old_value;
+
+				foreach (var key in keys)
+				{
+					key.OnChangedKey -= OnChangedKey;
+				}
+
+				if (OnChanged != null)
+				{
+					OnChanged(this, new ChangedValueEventArgs(old_value, ChangedValueType.Unexecute));
+				}
+			});
+
+			Command.CommandManager.Execute(cmd);
 		}
 
 		public void AddKey(FCurveKey<T> key)

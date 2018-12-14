@@ -109,11 +109,10 @@ bool ClientImplemented::Start( char* host, uint16_t port )
 	SOCKADDR_IN sockAddr;
 	HOSTENT* hostEntry= NULL;
 	
-	/* ソケット生成 */
+	// Create a socket
 	EfkSocket socket_ = Socket::GenSocket();
 	if ( socket_ == InvalidSocket )
 	{
-		if ( socket_ != InvalidSocket ) Socket::Close( socket_ );
 		return false;
 	}
 
@@ -144,7 +143,10 @@ bool ClientImplemented::Start( char* host, uint16_t port )
 
 	m_running = true;
 
-	m_threadRecv.Create( RecvAsync, this );
+	m_threadRecv = std::thread(
+		[this](){
+		RecvAsync(this);
+	});
 
 	EffekseerPrintDebug("Client : Start\n");
 
@@ -161,6 +163,7 @@ void ClientImplemented::Stop()
 	Socket::Shutsown( m_socket );
 	Socket::Close( m_socket );
 	m_running = false;
+	m_threadRecv.join();
 
 	EffekseerPrintDebug("Client : Stop\n");
 }

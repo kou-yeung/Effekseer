@@ -1,15 +1,23 @@
-# Debug Releaseに限定
+# Limit in Debug and Release
 set(CMAKE_CONFIGURATION_TYPES Debug Release CACHE TYPE INTERNAL FORCE )
 
-# プロジェクト名
+# The project's name
 project(Effekseer)
 
-# CMake バージョンチェック
+# Check cmake version
 cmake_minimum_required(VERSION 2.8)
 
-# MSVC向け設定
+option(BUILD_VIEWER "Build viewer" OFF)
+option(BUILD_TEST "Build test" OFF)
+
+# For MSVC
 if (MSVC)
 	option(USE_MSVC_RUNTIME_LIBRARY_DLL "Use MSVC runtime library DLL" OFF)
+endif()
+
+# For Mac
+if(APPLE)
+	set(CMAKE_OSX_DEPLOYMENT_TARGET 10.10)
 endif()
 
 if (MSVC)
@@ -20,10 +28,16 @@ else()
 	set(CMAKE_CXX_FLAGS "-std=c++11 -fPIC" ${CMAKE_CXX_FLAGS})
 endif()
 
+
 option(USE_INTERNAL_LOADER "Use Internal Loader" ON)
 
 option(USE_GLEW_STATIC "Use Glew static library" OFF)
+
+if (WIN32)
 option(USE_GLEW_DLL "Use Glew DLL" ON)
+else()
+option(USE_GLEW_DLL "Use Glew DLL" OFF)
+endif()
 
 option(USE_OPENGLES2 "Use OpenGL ES2" OFF)
 option(USE_OPENGLES3 "Use OpenGL ES3" OFF)
@@ -36,14 +50,16 @@ option(USE_OPENAL "Use OpenAL" ON)
 endif()
 
 if (WIN32)
-option(USE_XAUDIO2 "Use XAudio2" ON)
+option(USE_XAUDIO2 "Use XAudio2" OFF)
+option(USE_DSOUND "Use DirectSound" OFF)
+option(USE_OSM "Use OpenSoundMixer" OFF)
 endif()
 
-# ソースコード設定
+
+# Setup source codes
 set(effekseer_src
 	Effekseer/Effekseer/Effekseer.Client.cpp
 	Effekseer/Effekseer/Effekseer.Color.cpp
-	Effekseer/Effekseer/Effekseer.CriticalSection.cpp
 	Effekseer/Effekseer/Effekseer.DefaultEffectLoader.cpp
 	Effekseer/Effekseer/Effekseer.DefaultFile.cpp
 	Effekseer/Effekseer/Effekseer.Effect.cpp
@@ -66,7 +82,6 @@ set(effekseer_src
 	Effekseer/Effekseer/Effekseer.Setting.cpp
 	Effekseer/Effekseer/Effekseer.Server.cpp
 	Effekseer/Effekseer/Effekseer.Socket.cpp
-	Effekseer/Effekseer/Effekseer.Thread.cpp
 	Effekseer/Effekseer/Effekseer.Vector2D.cpp
 	Effekseer/Effekseer/Effekseer.Vector3D.cpp
 	Effekseer/Effekseer/Culling/Culling3D.Grid.cpp
@@ -152,48 +167,45 @@ list(APPEND effekseer_renderer_gl_src
 
 endif()
 
-set(effekseer_sound_al_src
-	EffekseerSoundAL/EffekseerSound/EffekseerSoundAL.Sound.cpp
-	EffekseerSoundAL/EffekseerSound/EffekseerSoundAL.SoundLoader.cpp
-	EffekseerSoundAL/EffekseerSound/EffekseerSoundAL.SoundPlayer.cpp
-	EffekseerSoundAL/EffekseerSound/EffekseerSoundAL.SoundVoice.cpp)
-
-set(effekseer_sound_dsound_src
-	EffekseerSoundDSound/EffekseerSound/EffekseerSoundDSound.Sound.cpp
-	EffekseerSoundDSound/EffekseerSound/EffekseerSoundDSound.SoundLoader.cpp
-	EffekseerSoundDSound/EffekseerSound/EffekseerSoundDSound.SoundPlayer.cpp
-	EffekseerSoundDSound/EffekseerSound/EffekseerSoundDSound.SoundVoice.cpp)
-
-set(effekseer_sound_xaudio2_src
-	EffekseerSoundXAudio2/EffekseerSound/EffekseerSoundXAudio2.Sound.cpp
-	EffekseerSoundXAudio2/EffekseerSound/EffekseerSoundXAudio2.SoundLoader.cpp
-	EffekseerSoundXAudio2/EffekseerSound/EffekseerSoundXAudio2.SoundPlayer.cpp
-	EffekseerSoundXAudio2/EffekseerSound/EffekseerSoundXAudio2.SoundVoice.cpp)
-
-# インクルードの設定
+# set include directories
 include_directories(
 	Effekseer/
+	include/
 	)
 
-# コンパイル先を追加
+# set lib directories
+
+link_directories(
+	${PROJECT_SOURCE_DIR}/lib/
+	)
+
+# Add compile targets
 add_library( effekseer STATIC ${effekseer_src} )
 
 if (WIN32)
 add_library( effekseer_renderer_dx9 STATIC ${effekseer_renderer_dx9_src} )
 add_library( effekseer_renderer_dx11 STATIC ${effekseer_renderer_dx11_src} )
-add_library( effekseer_sound_dsound STATIC ${effekseer_sound_dsound_src} )
-if (USE_XAUDIO2)
-add_library( effekseer_sound_xaudio2 STATIC ${effekseer_sound_xaudio2_src} )
-endif()
 endif()
 
 add_library( effekseer_renderer_gl STATIC ${effekseer_renderer_gl_src} )
 
 if (USE_OPENAL)
-add_library( effekseer_sound_al STATIC ${effekseer_sound_al_src} )
+	add_subdirectory(EffekseerSoundAL)
 endif()
 
-# フラグ処理
+if (USE_DSOUND)
+	add_subdirectory(EffekseerSoundDSound)
+endif()
+
+if (USE_XAUDIO2)
+	add_subdirectory(EffekseerSoundXAudio2)
+endif()
+
+if (USE_OSM OR BUILD_VIEWER)
+	add_subdirectory("EffekseerSoundOSMixer")
+endif()
+
+# Flags
 if (MSVC)
 	if (NOT USE_MSVC_RUNTIME_LIBRARY_DLL)
 		foreach (flag CMAKE_C_FLAGS
@@ -238,7 +250,7 @@ if (USE_OPENGL3)
 endif()
 
 
-# 出力先の設定
+# set exported directory
 if (MSVC)
 set_target_properties(effekseer PROPERTIES OUTPUT_NAME_DEBUG "Effekseer" )
 set_target_properties(effekseer PROPERTIES OUTPUT_NAME_RELEASE "Effekseer" )
@@ -271,42 +283,6 @@ else()
 set_target_properties(effekseer_renderer_gl PROPERTIES OUTPUT_NAME "EffekseerRendererGL" )
 endif()
 
-if (MSVC)
-if (MSVC)
-set_target_properties(effekseer_sound_dsound PROPERTIES OUTPUT_NAME_DEBUG "EffekseerSoundDSound" )
-set_target_properties(effekseer_sound_dsound PROPERTIES OUTPUT_NAME_RELEASE "EffekseerSoundDSound" )
-else()
-set_target_properties(effekseer_sound_dsound PROPERTIES OUTPUT_NAME "EffekseerSoundDSound" )
-endif()
-endif()
-
-if (MSVC)
-if (MSVC)
-set_target_properties(effekseer_sound_dsound PROPERTIES OUTPUT_NAME_DEBUG "EffekseerSoundDSound" )
-set_target_properties(effekseer_sound_dsound PROPERTIES OUTPUT_NAME_RELEASE "EffekseerSoundDSound" )
-else()
-set_target_properties(effekseer_sound_dsound PROPERTIES OUTPUT_NAME "EffekseerSoundDSound" )
-endif()
-endif()
-
-if (MSVC)
-if (MSVC)
-set_target_properties(effekseer_sound_xaudio2 PROPERTIES OUTPUT_NAME_DEBUG "EffekseerSoundXAudio2" )
-set_target_properties(effekseer_sound_xaudio2 PROPERTIES OUTPUT_NAME_RELEASE "EffekseerSoundXAudio2" )
-else()
-set_target_properties(effekseer_sound_xaudio2 PROPERTIES OUTPUT_NAME "EffekseerSoundXAudio2" )
-endif()
-endif()
-
-if (USE_OPENAL)
-if (MSVC)
-set_target_properties(effekseer_sound_al PROPERTIES OUTPUT_NAME_DEBUG "EffekseerSoundAL" )
-set_target_properties(effekseer_sound_al PROPERTIES OUTPUT_NAME_RELEASE "EffekseerSoundAL" )
-else()
-set_target_properties(effekseer_sound_al PROPERTIES OUTPUT_NAME "EffekseerSoundAL" )
-endif()
-endif()
-
 install(
 	TARGETS effekseer
 	ARCHIVE DESTINATION lib
@@ -326,28 +302,15 @@ install(
 	LIBRARY DESTINATION lib)
 endif()
 
-if (MSVC)
-install(
-	TARGETS effekseer_sound_dsound
-	ARCHIVE DESTINATION lib
-	LIBRARY DESTINATION lib)
-endif()
-
-if (MSVC)
-install(
-	TARGETS effekseer_sound_xaudio2
-	ARCHIVE DESTINATION lib
-	LIBRARY DESTINATION lib)
-endif()
-
 install(
 	TARGETS effekseer_renderer_gl
 	ARCHIVE DESTINATION lib
 	LIBRARY DESTINATION lib)
 
-if (USE_OPENAL)
-install(
-	TARGETS effekseer_sound_al
-	ARCHIVE DESTINATION lib
-	LIBRARY DESTINATION lib)
+if (BUILD_VIEWER)
+	add_subdirectory("Viewer")
+endif()
+
+if (BUILD_TEST)
+	add_subdirectory("Test")
 endif()

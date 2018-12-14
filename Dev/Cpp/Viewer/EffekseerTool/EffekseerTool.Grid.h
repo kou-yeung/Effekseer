@@ -5,9 +5,7 @@
 //----------------------------------------------------------------------------------
 // Include
 //----------------------------------------------------------------------------------
-#include <EffekseerRenderer/EffekseerRendererDX9.Renderer.h>
-#include <EffekseerRenderer/EffekseerRendererDX9.RendererImplemented.h>
-#include <EffekseerRenderer/EffekseerRendererDX9.DeviceObject.h>
+#include "../Graphics/efk.LineRenderer.h"
 
 //-----------------------------------------------------------------------------------
 //
@@ -18,31 +16,19 @@ namespace EffekseerRenderer
 //
 //----------------------------------------------------------------------------------
 class Grid
-	: public EffekseerRendererDX9::DeviceObject
 {
-private:
-	
-	struct Vertex
-	{
-		::Effekseer::Vector3D	Pos;
-		float	Col[4];
-	};
 
-	EffekseerRendererDX9::RendererImplemented*			m_renderer;
-	EffekseerRendererDX9::Shader*						m_shader;
+	efk::LineRenderer*	lineRenderer = nullptr;
+
 	int32_t							m_lineCount;
 	float							m_gridLength;
 
-	Grid( EffekseerRendererDX9::RendererImplemented* renderer, EffekseerRendererDX9::Shader* shader );
+	Grid(efk::Graphics* graphics);
 public:
 
 	virtual ~Grid();
 
-	static Grid* Create( EffekseerRendererDX9::RendererImplemented* renderer );
-
-public:	// デバイス復旧用
-	virtual void OnLostDevice();
-	virtual void OnResetDevice();
+	static Grid* Create(efk::Graphics* graphics);
 
 public:
 	void Rendering( ::Effekseer::Color& gridColor, bool isRightHand );
@@ -51,9 +37,6 @@ public:
 	bool IsShownXY;
 	bool IsShownXZ;
 	bool IsShownYZ;
-
-private:
-	void DrawLine( const ::Effekseer::Vector3D& pos1, const ::Effekseer::Vector3D& pos2, const ::Effekseer::Color& col );
 };
 //----------------------------------------------------------------------------------
 //

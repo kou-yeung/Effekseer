@@ -3,6 +3,7 @@
 // Include
 //----------------------------------------------------------------------------------
 #include "Effekseer.FCurves.h"
+#include "Effekseer.InstanceGlobal.h"
 
 //----------------------------------------------------------------------------------
 //
@@ -135,9 +136,9 @@ float FCurve::GetValue( int32_t frame )
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
-float FCurve::GetOffset( const Manager& manager ) const
+float FCurve::GetOffset(InstanceGlobal& g) const
 {
-	return (m_offsetMax - m_offsetMin) * ( (float)manager.GetRandFunc()() / (float)manager.GetRandMax() ) + m_offsetMin;
+	return g.GetRand(m_offsetMin, m_offsetMax);
 }
 
 //----------------------------------------------------------------------------------
@@ -167,6 +168,36 @@ void FCurve::Maginify(float value )
 		m_keys[i] *= value;
 	}
 }
+
+//----------------------------------------------------------------------------------
+//
+//----------------------------------------------------------------------------------
+FCurveVector2D::FCurveVector2D()
+	: X(0)
+	, Y(0)
+{
+
+}
+
+//----------------------------------------------------------------------------------
+//
+//----------------------------------------------------------------------------------
+int32_t FCurveVector2D::Load(void* data, int32_t version)
+{
+	int32_t size = 0;
+	uint8_t* p = (uint8_t*) data;
+
+	int32_t x_size = X.Load(p, version);
+	size += x_size;
+	p += x_size;
+
+	int32_t y_size = Y.Load(p, version);
+	size += y_size;
+	p += y_size;
+
+	return size;
+}
+
 
 //----------------------------------------------------------------------------------
 //

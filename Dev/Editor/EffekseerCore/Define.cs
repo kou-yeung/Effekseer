@@ -6,6 +6,14 @@ using System.Reflection;
 using System.Resources;
 using System.Threading;
 
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Json;
+using System.Text;
+
 namespace Effekseer
 {
 	/// <summary>
@@ -61,18 +69,72 @@ namespace Effekseer
     // アセンブリからリソースファイルをロードする
     // Resources.GetString(...) に介して取得する場合、
     // カルチャーによってローカライズ済の文字列が得られます。
-    static class Resources
+    public static class Resources
     {
-        static ResourceManager resources;
-        static Resources()
+		/* this implementation causes errors in mono
+		[DataContract]
+		class Data
+		{
+			[DataMember]
+			public Dictionary<string, string> kv;
+		}
+		*/
+
+		static ResourceManager resources;
+
+		static Dictionary<string, string> keyToStrings = new Dictionary<string, string>();
+
+		static Resources()
         {
-            resources = new ResourceManager("Effekseer.Properties.Resources", Assembly.GetExecutingAssembly());
         }
 
-        public static string GetString(string name)
-        {
-            if (resources == null) return String.Empty;
+		public static void SetResourceManager(ResourceManager resourceManager)
+		{
+			resources = resourceManager;
+		}
 
+		public static void LoadLanguageFile(string path)
+		{
+			var lines = System.IO.File.ReadAllLines(path);
+
+			foreach(var line in lines)
+			{
+				var strs = line.Split(',');
+				if (strs.Length < 2) continue;
+
+				var key = strs[0];
+				var value = string.Join(",", strs.Skip(1));
+				value = value.Replace(@"\n", "\n");
+
+				keyToStrings.Add(key, value);
+			}
+
+			/* this implementation causes errors in mono
+			var bytes = System.IO.File.ReadAllBytes(path);
+		
+			var settings = new DataContractJsonSerializerSettings();
+			settings.UseSimpleDictionaryFormat = true;
+			var serializer = new DataContractJsonSerializer(typeof(Data), settings);
+			using (var ms = new MemoryStream(bytes))
+			{
+				var data = (Data)serializer.ReadObject(ms);
+				foreach (var x in data.kv)
+				{
+					keyToStrings = data.kv;
+				}
+			}
+			*/
+		}
+
+		public static string GetString(string name)
+        {
+			if(keyToStrings.ContainsKey(name))
+			{
+				return keyToStrings[name];
+			}
+
+            if (resources == null) return string.Empty;
+			
             try
             {
                 var value = resources.GetString(name);
@@ -93,16 +155,13 @@ namespace Effekseer
 	Inherited = false)]
 	public class NameAttribute : Attribute
 	{
-        static ResourceManager resources;
-
         static NameAttribute()
         {
-            resources = new ResourceManager("Effekseer.Properties.Resources", Assembly.GetExecutingAssembly());
         }
 
 		public NameAttribute()
 		{
-			language = Language.Japanese;
+			language = Language.English;
 			value = string.Empty;
 		}
 
@@ -158,7 +217,7 @@ namespace Effekseer
 	{
 		public DescriptionAttribute()
 		{
-			language = Language.Japanese;
+			language = Language.English;
 			value = string.Empty;
 		}
 

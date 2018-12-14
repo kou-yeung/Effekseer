@@ -31,7 +31,7 @@ struct RibbonAllColorParameter
 	{
 		struct
 		{
-			color all;
+			Color all;
 		} fixed;
 
 		struct
@@ -60,13 +60,13 @@ struct RibbonColorParameter
 	{
 		struct
 		{
-		
+
 		} def;
 
 		struct
 		{
-			color l;
-			color r;
+			Color l;
+			Color r;
 		} fixed;
 	};
 };
@@ -85,7 +85,7 @@ struct RibbonPositionParameter
 	{
 		struct
 		{
-		
+
 		} def;
 
 		struct
@@ -107,25 +107,25 @@ public:
 	struct InstanceValues
 	{
 		// 色
-		color _color;
-		color _original;
+		Color _color;
+		Color _original;
 
-		union 
+		union
 		{
 			struct
 			{
-			
+				Color _color;
 			} fixed;
 
 			struct
 			{
-
+				Color _color;
 			} random;
 
 			struct
 			{
-				color start;
-				color  end;
+				Color start;
+				Color  end;
 
 			} easing;
 
@@ -133,12 +133,12 @@ public:
 
 		union
 		{
-	
+
 		} colorValues;
 
 		union
 		{
-	
+
 		} positionValues;
 	};
 
@@ -157,7 +157,9 @@ public:
 
 	int RibbonTexture;
 
-	EffectNodeRibbon( Effect* effect, unsigned char*& pos )
+	int32_t	SplineDivision = 1;
+
+	EffectNodeRibbon(Effect* effect, unsigned char*& pos)
 		: EffectNodeImplemented(effect, pos)
 	{
 	}
@@ -170,9 +172,11 @@ public:
 
 	void BeginRendering(int32_t count, Manager* manager);
 
-	void BeginRenderingGroup(InstanceGroup* group, Manager* manager);
+	void BeginRenderingGroup(InstanceGroup* group, Manager* manager) override;
 
-	void Rendering(const Instance& instance, Manager* manager);
+	void EndRenderingGroup(InstanceGroup* group, Manager* manager) override;
+
+	void Rendering(const Instance& instance, const Instance* next_instance, Manager* manager) override;
 
 	void EndRendering(Manager* manager);
 

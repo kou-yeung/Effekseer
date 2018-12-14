@@ -430,13 +430,13 @@
     <value>開始</value>
   </data>
   <data name="StartFrame" xml:space="preserve">
-    <value>Start Frame</value>
+    <value>開始フレーム</value>
   </data>
   <data name="TransmitDataOnEdit" xml:space="preserve">
     <value>編集時にデータを送信する</value>
   </data>
   <data name="TransmitDataOnLoad" xml:space="preserve">
-    <value>Transmit data on load</value>
+    <value>読み込み時にデータを送信する</value>
   </data>
   <data name="TransmitDataOnSave" xml:space="preserve">
     <value>保存時にデータを送信する</value>
@@ -478,7 +478,7 @@
     <value>画像ファイル (*.png)|*.png</value>
   </data>
   <data name="ModelFilter" xml:space="preserve">
-    <value>モデルファイル (*.efkmodel)|*.efkmodel</value>
+    <value>モデルファイル (*.efkmodel,fbx,mqo)|*.efkmodel;*.fbx;*mqo</value>
   </data>
   <data name="SoundFilter" xml:space="preserve">
     <value>音声ファイル (*.wav)|*.wav</value>
@@ -542,5 +542,26 @@
   </data>
   <data name="InternalViewHelp" xml:space="preserve">
     <value>ヘルプを表示</value>
+  </data>
+  <data name="IconBehavior" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\image\iconbehavior.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="IconCulling" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\image\iconculling.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="IconFileViewer" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\image\iconfileviewer.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="IconNetwork" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\image\iconnetwork.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="IconNodeTree" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\image\iconnodetree.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="IconOption" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\image\iconoption.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="ResetMaginification" xml:space="preserve">
+    <value>倍率再設定</value>
   </data>
 </root>

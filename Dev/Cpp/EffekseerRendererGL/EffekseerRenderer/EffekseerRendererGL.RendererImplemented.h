@@ -13,6 +13,9 @@
 #if defined(_M_IX86) || defined(__x86__)
 #define EFK_SSE2
 #include <emmintrin.h>
+#elif defined(__ARM_NEON__)
+#define EFK_NEON
+#include <arm_neon.h>
 #endif
 
 #ifdef _MSC_VER
@@ -125,6 +128,54 @@ inline void TransformVertexes( Vertex* vertexes, int32_t count, const ::Effeksee
 			inout_prev->Y = tmp_out[1];
 			inout_prev->Z = tmp_out[2];
 		}
+	#elif defined(EFK_NEON)
+		float32x4_t r0 = vld1q_f32( mat.Value[0] );
+		float32x4_t r1 = vld1q_f32( mat.Value[1] );
+		float32x4_t r2 = vld1q_f32( mat.Value[2] );
+		float32x4_t r3 = vld1q_f32( mat.Value[3] );
+	
+		float tmp_out[4];
+		::Effekseer::Vector3D* inout_prev;
+	
+		// １ループ目
+		{
+			::Effekseer::Vector3D* inout_cur = &vertexes[0].Pos;
+			float32x4_t v = vld1q_f32( (const float*)inout_cur );
+			
+			float32x4_t a = vmlaq_lane_f32( r3, r0, vget_low_f32(v), 0 );
+			a = vmlaq_lane_f32( a, r1, vget_low_f32(v), 1 );
+			a = vmlaq_lane_f32( a, r2, vget_high_f32(v), 0 );
+			
+			// 今回の結果をストアしておく
+			vst1q_f32( tmp_out, a );
+			inout_prev = inout_cur;
+		}
+	
+		for( int i = 1; i < count; i++ )
+		{
+			::Effekseer::Vector3D* inout_cur = &vertexes[i].Pos;
+			float32x4_t v = vld1q_f32( (const float*)inout_cur );
+			
+			float32x4_t a = vmlaq_lane_f32( r3, r0, vget_low_f32(v), 0 );
+			a = vmlaq_lane_f32( a, r1, vget_low_f32(v), 1 );
+			a = vmlaq_lane_f32( a, r2, vget_high_f32(v), 0 );
+			
+			// 直前のループの結果を書き込みます
+			inout_prev->X = tmp_out[0];
+			inout_prev->Y = tmp_out[1];
+			inout_prev->Z = tmp_out[2];
+			
+			// 今回の結果をストアしておく
+			vst1q_f32( tmp_out, a );
+			inout_prev = inout_cur;
+		}
+	
+		// 最後のループの結果を書き込み
+		{
+			inout_prev->X = tmp_out[0];
+			inout_prev->Y = tmp_out[1];
+			inout_prev->Z = tmp_out[2];
+		}
 	#else
 		for( int i = 0; i < count; i++ )
 		{
@@ -203,6 +254,54 @@ inline void TransformVertexes(VertexDistortion* vertexes, int32_t count, const :
 			inout_prev->Y = tmp_out[1];
 			inout_prev->Z = tmp_out[2];
 		}
+#elif defined(EFK_NEON)
+	float32x4_t r0 = vld1q_f32(mat.Value[0]);
+	float32x4_t r1 = vld1q_f32(mat.Value[1]);
+	float32x4_t r2 = vld1q_f32(mat.Value[2]);
+	float32x4_t r3 = vld1q_f32(mat.Value[3]);
+	
+	float tmp_out[4];
+	::Effekseer::Vector3D* inout_prev;
+	
+	// １ループ目
+	{
+		::Effekseer::Vector3D* inout_cur = &vertexes[0].Pos;
+		float32x4_t v = vld1q_f32((const float*) inout_cur);
+		
+		float32x4_t a = vmlaq_lane_f32( r3, r0, vget_low_f32(v), 0 );
+		a = vmlaq_lane_f32( a, r1, vget_low_f32(v), 1 );
+		a = vmlaq_lane_f32( a, r2, vget_high_f32(v), 0 );
+		
+		// 今回の結果をストアしておく
+		vst1q_f32(tmp_out, a);
+		inout_prev = inout_cur;
+	}
+	
+	for (int i = 1; i < count; i++)
+	{
+		::Effekseer::Vector3D* inout_cur = &vertexes[i].Pos;
+		float32x4_t v = vld1q_f32((const float*) inout_cur);
+		
+		float32x4_t a = vmlaq_lane_f32( r3, r0, vget_low_f32(v), 0 );
+		a = vmlaq_lane_f32( a, r1, vget_low_f32(v), 1 );
+		a = vmlaq_lane_f32( a, r2, vget_high_f32(v), 0 );
+		
+		// 直前のループの結果を書き込みます
+		inout_prev->X = tmp_out[0];
+		inout_prev->Y = tmp_out[1];
+		inout_prev->Z = tmp_out[2];
+		
+		// 今回の結果をストアしておく
+		vst1q_f32(tmp_out, a);
+		inout_prev = inout_cur;
+	}
+	
+	// 最後のループの結果を書き込み
+	{
+		inout_prev->X = tmp_out[0];
+		inout_prev->Y = tmp_out[1];
+		inout_prev->Z = tmp_out[2];
+	}
 #else
 	for (int i = 0; i < count; i++)
 	{
@@ -253,6 +352,7 @@ struct RenderStateSet
 	GLint		blendSrc;
 	GLint		blendDst;
 	GLint		blendEquation;
+	GLint		vao;
 };
 
 /**
@@ -268,14 +368,20 @@ friend class DeviceObject;
 
 private:
 	VertexBuffer*		m_vertexBuffer;
-	IndexBuffer*		m_indexBuffer;
+	IndexBuffer*		m_indexBuffer = nullptr;
+	IndexBuffer*		m_indexBufferForWireframe = nullptr;
 	int32_t				m_squareMaxCount;
 	
+	int32_t				drawcallCount = 0;
+	int32_t				drawvertexCount = 0;
+
 	Shader*							m_shader;
 	Shader*							m_shader_no_texture;
 
 	Shader*							m_shader_distortion;
 	Shader*							m_shader_no_texture_distortion;
+
+	Shader*		currentShader = nullptr;
 
 	EffekseerRenderer::StandardRenderer<RendererImplemented, Shader, Vertex, VertexDistortion>*	m_standardRenderer;
 
@@ -285,6 +391,8 @@ private:
 	VertexArray*			m_vao_distortion;
 	VertexArray*			m_vao_no_texture_distortion;
 
+	VertexArray*			m_vao_wire_frame;
+
 	::Effekseer::Vector3D	m_lightDirection;
 	::Effekseer::Color		m_lightColor;
 	::Effekseer::Color		m_lightAmbient;
@@ -292,6 +400,9 @@ private:
 	::Effekseer::Matrix44	m_proj;
 	::Effekseer::Matrix44	m_camera;
 	::Effekseer::Matrix44	m_cameraProj;
+
+	::Effekseer::Vector3D	m_cameraPosition;
+	::Effekseer::Vector3D	m_cameraFrontDirection;
 
 	::EffekseerRenderer::RenderStateBase*		m_renderState;
 
@@ -312,6 +423,8 @@ private:
 	std::vector<GLuint>	m_currentTextures;
 
 	VertexArray*	m_currentVertexArray;
+
+	Effekseer::RenderMode m_renderMode = Effekseer::RenderMode::Normal;
 
 public:
 	/**
@@ -373,7 +486,7 @@ public:
 	/**
 		@brief	ライトの方向を設定する。
 	*/
-	void SetLightDirection( ::Effekseer::Vector3D& direction ) override;
+	void SetLightDirection( const ::Effekseer::Vector3D& direction ) override;
 
 	/**
 		@brief	ライトの色を取得する。
@@ -383,7 +496,7 @@ public:
 	/**
 		@brief	ライトの色を設定する。
 	*/
-	void SetLightColor( ::Effekseer::Color& color ) override;
+	void SetLightColor( const ::Effekseer::Color& color ) override;
 
 	/**
 		@brief	ライトの環境光の色を取得する。
@@ -393,7 +506,7 @@ public:
 	/**
 		@brief	ライトの環境光の色を設定する。
 	*/
-	void SetLightAmbientColor( ::Effekseer::Color& color ) override;
+	void SetLightAmbientColor( const ::Effekseer::Color& color ) override;
 
 	/**
 		@brief	投影行列を取得する。
@@ -419,6 +532,12 @@ public:
 		@brief	カメラプロジェクション行列を取得する。
 	*/
 	::Effekseer::Matrix44& GetCameraProjectionMatrix() override;
+
+	::Effekseer::Vector3D GetCameraFrontDirection() const override;
+
+	::Effekseer::Vector3D GetCameraPosition() const  override;
+
+	void SetCameraParameter(const ::Effekseer::Vector3D& front, const ::Effekseer::Vector3D& position)  override;
 
 	/**
 		@brief	スプライトレンダラーを生成する。
@@ -458,7 +577,11 @@ public:
 	/**
 	@brief	背景を取得する。
 	*/
-	Effekseer::TextureData* GetBackground() override { return &m_background; }
+	Effekseer::TextureData* GetBackground() override 
+	{
+		if (m_background.UserID == 0) return nullptr;
+		return &m_background;
+	}
 
 	/**
 	@brief	背景を設定する。
@@ -468,6 +591,18 @@ public:
 	EffekseerRenderer::DistortingCallback* GetDistortingCallback() override;
 
 	void SetDistortingCallback(EffekseerRenderer::DistortingCallback* callback) override;
+
+	/**
+	@brief	描画モードを設定する。
+	*/
+	void SetRenderMode( Effekseer::RenderMode renderMode ) override
+	{
+		m_renderMode = renderMode;
+	}
+	Effekseer::RenderMode GetRenderMode() override
+	{
+		return m_renderMode;
+	}
 
 	EffekseerRenderer::StandardRenderer<RendererImplemented, Shader, Vertex, VertexDistortion>* GetStandardRenderer() { return m_standardRenderer; }
 
@@ -480,12 +615,26 @@ public:
 	void SetLayout(Shader* shader);
 	void DrawSprites( int32_t spriteCount, int32_t vertexOffset );
 	void DrawPolygon( int32_t vertexCount, int32_t indexCount);
+
+	Shader* GetShader(bool useTexture, bool useDistortion) const;
 	void BeginShader(Shader* shader);
 	void EndShader(Shader* shader);
+
+	void SetVertexBufferToShader(const void* data, int32_t size);
+
+	void SetPixelBufferToShader(const void* data, int32_t size);
 
 	void SetTextures(Shader* shader, Effekseer::TextureData** textures, int32_t count);
 
 	void ResetRenderState();
+
+	int32_t GetDrawCallCount() const override;
+
+	int32_t GetDrawVertexCount() const override;
+
+	void ResetDrawCallCount() override;
+
+	void ResetDrawVertexCount() override;
 
 	std::vector<GLuint>& GetCurrentTextures() { return m_currentTextures; }
 
@@ -494,6 +643,9 @@ public:
 	virtual int GetRef() { return ::Effekseer::ReferenceObject::GetRef(); }
 	virtual int AddRef() { return ::Effekseer::ReferenceObject::AddRef(); }
 	virtual int Release() { return ::Effekseer::ReferenceObject::Release(); }
+
+private:
+	void GenerateIndexData();
 };
 
 //----------------------------------------------------------------------------------

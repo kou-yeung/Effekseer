@@ -45,6 +45,8 @@ public:
 	*/
 	Vector3D( float x, float y, float z );
 
+	Vector3D operator-();
+
 	Vector3D operator + ( const Vector3D& o ) const;
 
 	Vector3D operator - ( const Vector3D& o ) const;
@@ -53,6 +55,10 @@ public:
 
 	Vector3D operator / ( const float& o ) const;
 
+	Vector3D operator * (const Vector3D& o) const;
+
+	Vector3D operator / (const Vector3D& o) const;
+
 	Vector3D& operator += ( const Vector3D& o );
 
 	Vector3D& operator -= ( const Vector3D& o );
@@ -60,6 +66,8 @@ public:
 	Vector3D& operator *= ( const float& o );
 
 	Vector3D& operator /= ( const float& o );
+
+	bool operator == (const Vector3D& o);
 
 	/**
 		@brief	加算

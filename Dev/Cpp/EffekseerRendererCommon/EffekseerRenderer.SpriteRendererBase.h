@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <string.h>
 #include <math.h>
+#include <algorithm>
 
 #include "EffekseerRenderer.CommonUtils.h"
 #include "EffekseerRenderer.RenderStateBase.h"
@@ -37,6 +38,14 @@ protected:
 	int32_t							m_spriteCount;
 	int32_t							m_ringBufferOffset;
 	uint8_t*						m_ringBufferData;
+
+	struct KeyValue
+	{
+		float Key;
+		efkSpriteInstanceParam	Value;
+	};
+
+	std::vector<KeyValue>				instances;
 
 public:
 
@@ -87,17 +96,28 @@ protected:
 
 		renderer->GetStandardRenderer()->BeginRenderingAndRenderingIfRequired(count * 4, m_ringBufferOffset, (void*&) m_ringBufferData);
 		m_spriteCount = 0;
+
+		instances.clear();
 	}
 
 	void Rendering_(const efkSpriteNodeParam& parameter, const efkSpriteInstanceParam& instanceParameter, void* userData, const ::Effekseer::Matrix44& camera)
 	{
-		if (parameter.Distortion)
+		if (parameter.ZSort == Effekseer::ZSortType::None)
 		{
-			Rendering_Internal<VERTEX_DISTORTION>(parameter, instanceParameter, userData, camera);
+			if (parameter.Distortion)
+			{
+				Rendering_Internal<VERTEX_DISTORTION>(parameter, instanceParameter, userData, camera);
+			}
+			else
+			{
+				Rendering_Internal<VERTEX_NORMAL>(parameter, instanceParameter, userData, camera);
+			}
 		}
 		else
 		{
-			Rendering_Internal<VERTEX_NORMAL>(parameter, instanceParameter, userData, camera);
+			KeyValue kv;
+			kv.Value = instanceParameter;
+			instances.push_back(kv);
 		}
 	}
 
@@ -171,7 +191,7 @@ protected:
 			{
 				::Effekseer::Vector3D Up( 0.0f, 1.0f, 0.0f );
 	
-				::Effekseer::Vector3D::Normal( F, ::Effekseer::Vector3D( - camera.Values[0][2], - camera.Values[1][2], - camera.Values[2][2] ) );
+				::Effekseer::Vector3D::Normal( F, -m_renderer->GetCameraFrontDirection());
 	
 				::Effekseer::Vector3D::Normal( R, ::Effekseer::Vector3D::Cross( R, Up, F ) );
 				::Effekseer::Vector3D::Normal( U, ::Effekseer::Vector3D::Cross( U, F, R ) );
@@ -180,7 +200,7 @@ protected:
 			{
 				::Effekseer::Vector3D Up( 0.0f, 1.0f, 0.0f );
 	
-				::Effekseer::Vector3D::Normal( F, ::Effekseer::Vector3D( - camera.Values[0][2], - camera.Values[1][2], - camera.Values[2][2] ) );
+				::Effekseer::Vector3D::Normal( F, -m_renderer->GetCameraFrontDirection());
 	
 				::Effekseer::Vector3D::Normal( R, ::Effekseer::Vector3D::Cross( R, Up, F ) );
 				::Effekseer::Vector3D::Normal( U, ::Effekseer::Vector3D::Cross( U, F, R ) );
@@ -216,8 +236,7 @@ protected:
 			{
 				U = ::Effekseer::Vector3D( r.Value[1][0], r.Value[1][1], r.Value[1][2] );
 	
-				::Effekseer::Vector3D::Normal( F, ::Effekseer::Vector3D( - camera.Values[0][2], - camera.Values[1][2], - camera.Values[2][2] ) );
-	
+				::Effekseer::Vector3D::Normal( F, -m_renderer->GetCameraFrontDirection());
 				::Effekseer::Vector3D::Normal( R, ::Effekseer::Vector3D::Cross( R, U, F ) );
 				::Effekseer::Vector3D::Normal( F, ::Effekseer::Vector3D::Cross( F, R, U ) );
 			}
@@ -237,16 +256,22 @@ protected:
 			mat_rot.Value[3][1] = t.Y;
 			mat_rot.Value[3][2] = t.Z;
 	
+			ApplyDepthOffset(mat_rot, m_renderer->GetCameraFrontDirection(), m_renderer->GetCameraPosition(), s, parameter.DepthOffset, parameter.IsDepthOffsetScaledWithCamera, parameter.IsDepthOffsetScaledWithParticleScale, parameter.IsRightHand);
+
 			TransformVertexes( verteies, 4, mat_rot );
 		}
 		else if( parameter.Billboard == ::Effekseer::BillboardType::Fixed )
 		{
+			auto mat = instanceParameter.SRTMatrix43;
+
+			ApplyDepthOffset(mat, m_renderer->GetCameraFrontDirection(), m_renderer->GetCameraPosition(), parameter.DepthOffset, parameter.IsDepthOffsetScaledWithCamera, parameter.IsDepthOffsetScaledWithParticleScale, parameter.IsRightHand);
+
 			for( int i = 0; i < 4; i++ )
 			{
 				::Effekseer::Vector3D::Transform(
 					verteies[i].Pos,
 					verteies[i].Pos,
-					instanceParameter.SRTMatrix43 );
+					mat);
 
 				// 歪み処理
 				if (sizeof(VERTEX) == sizeof(VERTEX_DISTORTION))
@@ -256,18 +281,18 @@ protected:
 					::Effekseer::Vector3D::Transform(
 						vs->Tangent,
 						vs->Tangent,
-						instanceParameter.SRTMatrix43);
+						mat);
 
 					::Effekseer::Vector3D::Transform(
 						vs->Binormal,
 						vs->Binormal,
-						instanceParameter.SRTMatrix43);
+						mat);
 
 					Effekseer::Vector3D zero;
 					::Effekseer::Vector3D::Transform(
 						zero,
 						zero,
-						instanceParameter.SRTMatrix43);
+						mat);
 
 					::Effekseer::Vector3D::Normal(vs->Tangent, vs->Tangent - zero);
 					::Effekseer::Vector3D::Normal(vs->Binormal, vs->Binormal - zero);
@@ -280,53 +305,49 @@ protected:
 
 	void EndRendering_(RENDERER* renderer, const efkSpriteNodeParam& param)
 	{
-		/*
-		SHADER* shader_ = NULL;
-		if (param.ColorTextureIndex >= 0)
+		if (param.ZSort != Effekseer::ZSortType::None)
 		{
-			shader_ = shader;
+			auto mat = m_renderer->GetCameraMatrix();
+			for (auto& kv : instances)
+			{
+				efkVector3D t;
+				t.X = kv.Value.SRTMatrix43.Value[3][0];
+				t.Y = kv.Value.SRTMatrix43.Value[3][1];
+				t.Z = kv.Value.SRTMatrix43.Value[3][2];
+
+				auto frontDirection = m_renderer->GetCameraFrontDirection();
+				if (!param.IsRightHand)
+				{
+					frontDirection.Z = -frontDirection.Z;
+				}
+
+				kv.Key = Effekseer::Vector3D::Dot(t, frontDirection);
+			}
+
+			if (param.ZSort == Effekseer::ZSortType::NormalOrder)
+			{
+				std::sort(instances.begin(), instances.end(), [](const KeyValue& a, const KeyValue& b) -> bool { return a.Key < b.Key; });
+			}
+			else
+			{
+				std::sort(instances.begin(), instances.end(), [](const KeyValue& a, const KeyValue& b) -> bool { return a.Key > b.Key; });
+			}
+			
+
+			for (auto& kv : instances)
+			{
+				auto camera = m_renderer->GetCameraMatrix();
+
+				if (param.Distortion)
+				{
+					Rendering_Internal<VERTEX_DISTORTION>(param, kv.Value, nullptr, camera);
+				}
+				else
+				{
+					Rendering_Internal<VERTEX_NORMAL>(param, kv.Value, nullptr, camera);
+				}
+			}
 		}
-		else
-		{
-			shader_ = shader_no_texture;
-		}
-
-		renderer->BeginShader(shader_);
-
-		RenderStateBase::State& state = renderer->GetRenderState()->Push();
-		state.DepthTest = param.ZTest;
-		state.DepthWrite = param.ZWrite;
-		state.CullingType = ::Effekseer::CullingType::Double;
-
-		if (param.ColorTextureIndex >= 0)
-		{
-			TEXTURE texture = TexturePointerToTexture<TEXTURE>(param.EffectPointer->GetColorImage(param.ColorTextureIndex));
-			renderer->SetTextures(shader_, &texture, 1);
-		}
-		else
-		{
-			TEXTURE texture = 0;
-			renderer->SetTextures(shader_, &texture, 1);
-		}
-
-		((Effekseer::Matrix44*)(shader_->GetVertexConstantBuffer()))[0] = renderer->GetCameraProjectionMatrix();
-		shader_->SetConstantBuffer();
-
-		state.AlphaBlend = param.AlphaBlend;
-		state.TextureFilterTypes[0] = param.TextureFilter;
-		state.TextureWrapTypes[0] = param.TextureWrap;
-
-		renderer->GetRenderState()->Update(false);
-
-		renderer->SetVertexBuffer(renderer->GetVertexBuffer(), sizeof(VERTEX));
-		renderer->SetIndexBuffer(renderer->GetIndexBuffer());
-		renderer->SetLayout(shader_);
-		renderer->DrawSprites(m_spriteCount, m_ringBufferOffset / sizeof(VERTEX));
-
-		renderer->EndShader(shader_);
-
-		renderer->GetRenderState()->Pop();
-		*/
 	}
 
 public:
@@ -343,11 +364,7 @@ public:
 
 	void EndRendering(const efkSpriteNodeParam& parameter, void* userData) override
 	{
-		//if( m_ringBufferData == NULL ) return;
-		//
-		//if( m_spriteCount == 0 ) return;
-		//
-		//EndRendering_<RendererImplemented, Shader, GLuint, Vertex>(m_renderer, parameter);
+		EndRendering_(m_renderer, parameter);
 	}
 };
 //----------------------------------------------------------------------------------

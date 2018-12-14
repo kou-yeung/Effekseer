@@ -1,24 +1,38 @@
 ﻿
-#ifndef	__EFFEKSEER_DLL_H__
-#define	__EFFEKSEER_DLL_H__
+#pragma once
 
 /**
 	@file
-	@brief	ツール向けDLL出力
+	@brief	DLL export for tool
 */
 
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
 #include <Effekseer.h>
-#include "EffekseerRenderer/EffekseerRendererDX9.Renderer.h"
-#include "EffekseerRenderer/EffekseerRendererDX9.RendererImplemented.h"
 #include "EffekseerTool/EffekseerTool.Renderer.h"
 #include "EffekseerTool/EffekseerTool.Sound.h"
+
+#include "GUI/efk.ImageResource.h"
+#include "efk.Base.h"
 
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
+
+enum class DistortionType
+{
+	Current,
+	Effekseer120,
+	Disabled,
+};
+
+enum class RenderMode
+{
+	Normal,
+	Wireframe,
+};
+
 class ViewerParamater
 {
 public:
@@ -41,6 +55,9 @@ public:
 	float	CullingY;
 	float	CullingZ;
 
+	DistortionType	Distortion;
+	RenderMode		RenderingMode;
+
 	ViewerParamater();
 };
 
@@ -50,6 +67,14 @@ public:
 	int32_t	CountX;
 	int32_t	CountY;
 	int32_t	CountZ;
+
+	int32_t	TimeSpan = 0;
+
+	uint8_t AllColorR = 255;
+	uint8_t AllColorG = 255;
+	uint8_t AllColorB = 255;
+	uint8_t AllColorA = 255;
+
 	float	Distance;
 
 	int32_t	RemovedTime;
@@ -111,7 +136,8 @@ private:
 
 		void Unload(Effekseer::TextureData* data) override;
 
-		std::wstring RootPath;
+		Effekseer::TextureLoader* GetOriginalTextureLoader() const {return m_originalTextureLoader;}
+		std::u16string RootPath;
 	};
 
 	class SoundLoader
@@ -129,17 +155,17 @@ private:
 
 		void Unload( void* data );
 		
-		std::wstring RootPath;
+		std::u16string RootPath;
 	};
 
 	class ModelLoader
 	: public ::Effekseer::ModelLoader
 	{
 	private:
-		EffekseerRendererDX9::Renderer*	m_renderer;
+		EffekseerRenderer::Renderer*	m_renderer;
 
 	public:
-		ModelLoader( EffekseerRendererDX9::Renderer* renderer );
+		ModelLoader( EffekseerRenderer::Renderer* renderer );
 		virtual ~ModelLoader();
 
 	public:
@@ -147,10 +173,11 @@ private:
 
 		void Unload( void* data );
 
-		std::wstring RootPath;
+		std::u16string RootPath;
 	};
 
 	ViewerEffectBehavior	m_effectBehavior;
+	TextureLoader*			m_textureLoader;
 
 	int32_t				m_time;
 	
@@ -161,20 +188,29 @@ private:
 	::Effekseer::Vector3D m_rootLocation;
 	::Effekseer::Vector3D m_rootRotation;
 	::Effekseer::Vector3D m_rootScale;
+
+	::Effekseer::Effect* GetEffect();
+
 public:
 	Native();
 
 	~Native();
 
-	bool CreateWindow_Effekseer( void* handle, int width, int height, bool isSRGBMode );
+	bool CreateWindow_Effekseer( void* handle, int width, int height, bool isSRGBMode, efk::DeviceType deviceType);
 
 	bool UpdateWindow();
+
+	void ClearWindow(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+
+	void RenderWindow();
+
+	void Present();
 
 	bool ResizeWindow( int width, int height );
 
 	bool DestroyWindow();
 
-	bool LoadEffect( void* data, int size, const wchar_t* path );
+	bool LoadEffect( void* data, int size, const char16_t* path );
 
 	bool RemoveEffect();
 
@@ -194,13 +230,15 @@ public:
 
 	bool SetRandomSeed( int seed );
 
-	bool Record(const wchar_t* pathWithoutExt, const wchar_t* ext, int32_t count, int32_t offsetFrame, int32_t freq, TransparenceType transparenceType);
+	void* RenderView(int32_t width, int32_t height);
 
-	bool Record(const wchar_t* path, int32_t count, int32_t xCount, int32_t offsetFrame, int32_t freq, TransparenceType transparenceType);
+	bool Record(const char16_t* pathWithoutExt, const char16_t* ext, int32_t count, int32_t offsetFrame, int32_t freq, TransparenceType transparenceType);
 
-	bool RecordAsGifAnimation(const wchar_t* path, int32_t count, int32_t offsetFrame, int32_t freq, TransparenceType transparenceType);
+	bool Record(const char16_t* path, int32_t count, int32_t xCount, int32_t offsetFrame, int32_t freq, TransparenceType transparenceType);
 
-	bool RecordAsAVI(const wchar_t* path, int32_t count, int32_t offsetFrame, int32_t freq, TransparenceType transparenceType);
+	bool RecordAsGifAnimation(const char16_t* path, int32_t count, int32_t offsetFrame, int32_t freq, TransparenceType transparenceType);
+
+	bool RecordAsAVI(const char16_t* path, int32_t count, int32_t offsetFrame, int32_t freq, TransparenceType transparenceType);
 
 	ViewerParamater GetViewerParamater();
 
@@ -222,7 +260,7 @@ public:
 
 	void SetBackgroundColor( uint8_t r, uint8_t g, uint8_t b );
 
-	void SetBackgroundImage( const wchar_t* path );
+	void SetBackgroundImage( const char16_t* path );
 
 	void SetGridColor( uint8_t r, uint8_t g, uint8_t b, uint8_t a );
 
@@ -236,7 +274,7 @@ public:
 
 	bool IsConnectingNetwork();
 
-	void SendDataByNetwork( const wchar_t* key, void* data, int size, const wchar_t* path );
+	void SendDataByNetwork( const char16_t* key, void* data, int size, const char16_t* path );
 
 	void SetLightDirection( float x, float y, float z );
 
@@ -247,9 +285,16 @@ public:
 	void SetIsRightHand( bool value );
 
 	void SetCullingParameter( bool isCullingShown, float cullingRadius, float cullingX, float cullingY, float cullingZ);
-};
 
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
-#endif	// __EFFEKSEER_DLL_H__
+	efk::ImageResource* LoadImageResource(const char16_t* path);
+
+	int32_t GetAndResetDrawCall();
+
+	int32_t GetAndResetVertexCount();
+
+	float GetFPS();
+
+#if !SWIG
+	EffekseerRenderer::Renderer* GetRenderer();
+#endif
+};

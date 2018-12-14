@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
@@ -9,8 +9,8 @@
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Effekseer</RootNamespace>
-    <AssemblyName>Effekseer</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <AssemblyName>Effekseer_Old</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
     <FileAlignment>512</FileAlignment>
@@ -25,6 +25,8 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Prefer32Bit>false</Prefer32Bit>
+    <UseVSHostingProcess>true</UseVSHostingProcess>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <PlatformTarget>x86</PlatformTarget>
@@ -35,6 +37,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
     <StartupObject />
@@ -184,6 +187,12 @@
     <Compile Include="GUI\Component\Path.Designer.cs">
       <DependentUpon>Path.cs</DependentUpon>
     </Compile>
+    <Compile Include="GUI\Component\PathForModel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="GUI\Component\PathForModel.designer.cs">
+      <DependentUpon>PathForModel.cs</DependentUpon>
+    </Compile>
     <Compile Include="GUI\Component\PathForSound.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -220,6 +229,9 @@
     <Compile Include="GUI\Component\Vector3DWithRandom.Designer.cs">
       <DependentUpon>Vector3DWithRandom.cs</DependentUpon>
     </Compile>
+    <Compile Include="GUI\Dialog\OpenModelDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="GUI\DockContent.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -250,6 +262,12 @@
     <Compile Include="GUI\DockFileViewer.Designer.cs">
       <DependentUpon>DockFileViewer.cs</DependentUpon>
     </Compile>
+    <Compile Include="GUI\DockGlobal.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\DockGlobal.designer.cs">
+      <DependentUpon>DockGlobal.cs</DependentUpon>
+    </Compile>
     <Compile Include="GUI\DockNetwork.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -261,6 +279,12 @@
     </Compile>
     <Compile Include="GUI\DockNodeCommonValues.Designer.cs">
       <DependentUpon>DockNodeCommonValues.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\DockNodeDepthValues.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\DockNodeDepthValues.designer.cs">
+      <DependentUpon>DockNodeDepthValues.cs</DependentUpon>
     </Compile>
     <Compile Include="GUI\DockNodeRendererValues.cs">
       <SubType>Form</SubType>
@@ -360,7 +384,10 @@
       <DependentUpon>DockViewerController.cs</DependentUpon>
     </Compile>
     <Compile Include="GUI\Network.cs" />
+    <Compile Include="GUI\RecentFiles.cs" />
     <Compile Include="GUI\Shortcuts.cs" />
+    <Compile Include="swig\DeviceType.cs" />
+    <Compile Include="swig\InputTextFlags.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
@@ -368,6 +395,33 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="swig\ColorEditFlags.cs" />
+    <Compile Include="swig\ComboFlags.cs" />
+    <Compile Include="swig\Cond.cs" />
+    <Compile Include="swig\DialogButtons.cs" />
+    <Compile Include="swig\DialogSelection.cs" />
+    <Compile Include="swig\DialogStyle.cs" />
+    <Compile Include="swig\DistortionType.cs" />
+    <Compile Include="swig\DockSlot.cs" />
+    <Compile Include="swig\EffekseerNative.cs" />
+    <Compile Include="swig\EffekseerNativePINVOKE.cs" />
+    <Compile Include="swig\FCurveEdgeType.cs" />
+    <Compile Include="swig\FCurveInterporationType.cs" />
+    <Compile Include="swig\FileDialog.cs" />
+    <Compile Include="swig\GUIManager.cs" />
+    <Compile Include="swig\GUIManagerCallback.cs" />
+    <Compile Include="swig\ImageResource.cs" />
+    <Compile Include="swig\MouseCursor.cs" />
+    <Compile Include="swig\Native.cs" />
+    <Compile Include="swig\RenderMode.cs" />
+    <Compile Include="swig\SelectableFlags.cs" />
+    <Compile Include="swig\TransparenceType.cs" />
+    <Compile Include="swig\TreeNodeFlags.cs" />
+    <Compile Include="swig\Vec2.cs" />
+    <Compile Include="swig\ViewerEffectBehavior.cs" />
+    <Compile Include="swig\ViewerParamater.cs" />
+    <Compile Include="swig\WindowFlags.cs" />
+    <Compile Include="GUI\Viewer.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="GUI\AboutForm.resx">
@@ -394,6 +448,9 @@
     <EmbeddedResource Include="GUI\Component\FloatWithRandom.resx">
       <DependentUpon>FloatWithRandom.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="GUI\Component\GuiLanguage.resx">
+      <DependentUpon>GuiLanguage.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="GUI\Component\PathForImage.resx">
       <DependentUpon>PathForImage.cs</DependentUpon>
     </EmbeddedResource>
@@ -411,6 +468,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="GUI\Component\Path.resx">
       <DependentUpon>Path.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GUI\Component\PathForModel.resx">
+      <DependentUpon>PathForModel.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="GUI\Component\PathForSound.resx">
       <DependentUpon>PathForSound.cs</DependentUpon>
@@ -439,11 +499,17 @@
     <EmbeddedResource Include="GUI\DockFileViewer.resx">
       <DependentUpon>DockFileViewer.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="GUI\DockGlobal.resx">
+      <DependentUpon>DockGlobal.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="GUI\DockNetwork.resx">
       <DependentUpon>DockNetwork.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="GUI\DockNodeCommonValues.resx">
       <DependentUpon>DockNodeCommonValues.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GUI\DockNodeDepthValues.resx">
+      <DependentUpon>DockNodeDepthValues.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="GUI\DockNodeRendererValues.resx">
       <DependentUpon>DockNodeRendererValues.cs</DependentUpon>
@@ -504,14 +570,6 @@
       <Project>{E2495770-1734-4C77-8028-92040A1D36CB}</Project>
       <Name>EffekseerCore</Name>
     </ProjectReference>
-    <ProjectReference Include="..\EffekseerInterface\EffekseerInterface.csproj">
-      <Project>{11D889E1-56E6-4050-9244-1629A55D6641}</Project>
-      <Name>EffekseerInterface</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\EffekseerViewer\EffekseerViewer.csproj">
-      <Project>{38CBEECD-CE84-4AEE-BF7B-7DB89CC6827F}</Project>
-      <Name>EffekseerViewer</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -519,11 +577,17 @@
   <ItemGroup>
     <Content Include="Image\icon.ico" />
     <Content Include="Image\BackStep.png" />
+    <Content Include="Image\IconBehavior.png" />
     <Content Include="Image\IconCommon.png" />
+    <Content Include="Image\IconCulling.png" />
     <Content Include="Image\IconFCurve.png" />
+    <Content Include="Image\IconFileViewer.png" />
     <Content Include="Image\IconGenerationLocation.png" />
     <Content Include="Image\IconLocation.png" />
     <Content Include="Image\IconLocationAbs.png" />
+    <Content Include="Image\IconNetwork.png" />
+    <Content Include="Image\IconNodeTree.png" />
+    <Content Include="Image\IconOption.png" />
     <Content Include="Image\IconRecorder.png" />
     <Content Include="Image\IconRenderer.png" />
     <Content Include="Image\IconRendererCommon.png" />
@@ -543,6 +607,7 @@
     <Content Include="Image\Step.png" />
     <Content Include="Image\Stop.png" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

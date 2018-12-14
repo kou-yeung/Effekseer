@@ -7,6 +7,7 @@
 //----------------------------------------------------------------------------------
 #include "Effekseer.Base.h"
 #include "Effekseer.Vector3D.h"
+#include "Effekseer.Color.h"
 
 //----------------------------------------------------------------------------------
 //
@@ -23,6 +24,7 @@ namespace Effekseer
 	生成されたインスタンスの全てから参照できる部分
 */
 class InstanceGlobal
+	: public IRandObject
 {
 	friend class ManagerImplemented;
 
@@ -36,11 +38,25 @@ private:
 	InstanceContainer*	m_rootContainer;
 	Vector3D			m_targetLocation;
 
+	int32_t				m_seed = 0;
+
 	InstanceGlobal();
 
 	virtual ~InstanceGlobal();
 
 public:
+
+	bool		IsGlobalColorSet = false;
+	Color		GlobalColor = Color(255, 255, 255, 255);
+
+	std::vector<InstanceContainer*>	RenderedInstanceContainers;
+
+	void SetSeed(int32_t seed);
+
+	virtual float GetRand() override;
+
+	virtual float GetRand(float min_, float max_) override;
+
 	void IncInstanceCount();
 
 	void DecInstanceCount();

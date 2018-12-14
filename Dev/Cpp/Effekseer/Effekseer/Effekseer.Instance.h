@@ -11,6 +11,7 @@
 #include "Effekseer.Matrix43.h"
 #include "Effekseer.RectF.h"
 #include "Effekseer.Color.h"
+#include "Effekseer.IntrusiveList.h"
 
 #include "Effekseer.EffectNodeSprite.h"
 #include "Effekseer.EffectNodeRibbon.h"
@@ -30,7 +31,7 @@ namespace Effekseer
 /**
 	@brief	エフェクトの実体
 */
-class Instance
+class Instance : public IntrusiveList<Instance>::Node
 {
 	friend class Manager;
 	friend class InstanceContainer;
@@ -63,10 +64,10 @@ public:
 	Vector3D	m_GlobalRevisionVelocity;
 	
 	// Color for binding
-	color		ColorInheritance;
+	Color		ColorInheritance;
 
 	// Parent color
-	color		ColorParent;
+	Color		ColorParent;
 
 	union 
 	{
@@ -212,8 +213,8 @@ public:
 	// The time offset for UV
 	int32_t		uvTimeOffset;
 
-	// Scroll area for UV
-	RectF		uvScrollArea;
+	// Scroll, FCurve area for UV
+	RectF		uvAreaOffset;
 
 	// Scroll speed for UV
 	Vector2D	uvScrollSpeed;
@@ -245,6 +246,12 @@ public:
 	// 親の変換用行列
 	Matrix43		m_ParentMatrix43;
 
+	// 変換用行列が計算済かどうか
+	bool			m_GlobalMatrix43Calculated;
+
+	// 親の変換用行列が計算済かどうか
+	bool			m_ParentMatrix43Calculated;
+
 	/* 時間を進めるかどうか? */
 	bool			m_stepTime;
 
@@ -256,6 +263,8 @@ public:
 
 	// デストラクタ
 	virtual ~Instance();
+
+	void GenerateChildrenInRequired(float currentTime);
 
 public:
 	/**
@@ -271,7 +280,7 @@ public:
 	/**
 		@brief	初期化
 	*/
-	void Initialize( Instance* parent, int32_t instanceNumber );
+	void Initialize( Instance* parent, int32_t instanceNumber, int32_t parentTime );
 
 	/**
 		@brief	更新
@@ -279,9 +288,9 @@ public:
 	void Update( float deltaFrame, bool shown );
 
 	/**
-		@brief	描画
+		@brief	Draw instance
 	*/
-	void Draw();
+	void Draw(Instance* next);
 
 	/**
 		@brief	破棄
@@ -302,7 +311,7 @@ private:
 	/**
 		@brief	行列の更新
 	*/
-	void CalculateParentMatrix();
+	void CalculateParentMatrix( float deltaFrame );
 	
 	/**
 		@brief	絶対パラメータの反映

@@ -8,6 +8,8 @@
 #include "EffekseerRendererGL.RendererImplemented.h"
 #include "EffekseerRendererGL.DeviceObject.h"
 
+#include "../../EffekseerRendererCommon/EffekseerRenderer.ShaderBase.h"
+
 #include <vector>
 #include <string>
 
@@ -54,6 +56,7 @@ enum eConstantType
 //----------------------------------------------------------------------------------
 class Shader
 	: public DeviceObject
+	, public ::EffekseerRenderer::ShaderBase
 {
 private:
 	struct Layout
@@ -62,6 +65,20 @@ private:
 		uint16_t	count;
 		uint16_t	offset;
 		bool		normalized;
+	};
+
+	struct ShaderAttribInfoInternal
+	{
+		std::string	name;
+		GLenum		type;
+		uint16_t	count;
+		uint16_t	offset;
+		bool		normalized;
+	};
+
+	struct ShaderUniformInfoInternal
+	{
+		std::string	name;
 	};
 
 	struct ConstantLayout
@@ -87,9 +104,12 @@ private:
 	GLuint	m_textureSlots[4];
 	bool	m_textureSlotEnables[4];
 
-	std::vector<uint8_t>	m_vsSrc;
-	std::vector<uint8_t>	m_psSrc;
+	std::vector<char>	m_vsSrc;
+	std::vector<char>	m_psSrc;
 	std::string				m_name;
+
+	std::vector<ShaderAttribInfoInternal>	attribs;
+	std::vector<ShaderUniformInfoInternal>	uniforms;
 
 	static bool CompileShader(
 		RendererImplemented* renderer,
@@ -144,20 +164,22 @@ public:
 
 	void SetVertexSize(int32_t vertexSize);
 
-	void SetVertexConstantBufferSize(int32_t size);
-	void SetPixelConstantBufferSize(int32_t size);
+	void SetVertexConstantBufferSize(int32_t size) override;
+	void SetPixelConstantBufferSize(int32_t size) override;
 
-	void* GetVertexConstantBuffer() { return m_vertexConstantBuffer; }
-	void* GetPixelConstantBuffer() { return m_pixelConstantBuffer; }
+	void* GetVertexConstantBuffer()  override { return m_vertexConstantBuffer; }
+	void* GetPixelConstantBuffer()  override { return m_pixelConstantBuffer; }
 
 	void AddVertexConstantLayout(eConstantType type, GLint id, int32_t offset);
 	void AddPixelConstantLayout(eConstantType type, GLint id, int32_t offset);
 
-	void SetConstantBuffer();
+	void SetConstantBuffer() override;
 
 	void SetTextureSlot(int32_t index, GLuint value);
 	GLuint GetTextureSlot(int32_t index);
 	bool GetTextureSlotEnable(int32_t index);
+
+	bool IsValid() const;
 };
 
 //----------------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 
 #include "fbxToEfkMdl.Base.h"
 #include "fbxToEfkMdl.FBXConverter.h"
+#include "fbxToMdl.VertexAnimation.h"
 
 #include <iostream>
 #include <fstream>
@@ -45,6 +46,8 @@ int main(int argc, char** argv)
 		int ext_i = p.find_last_of(".");
 		std::string ext = p.substr(ext_i, p.size() - ext_i);
 
+		std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
 		if (ext != ".fbx")
 		{
 			printf("InputFile is not fbx\n");
@@ -58,6 +61,8 @@ int main(int argc, char** argv)
 		std::string p = argv[2];
 		int ext_i = p.find_last_of(".");
 		std::string ext = p.substr(ext_i, p.size() - ext_i);
+
+		std::transform(ext.begin(), ext.end(), ext.begin(), tolower);
 
 		if (ext != ".efkmodel")
 		{
@@ -93,7 +98,7 @@ int main(int argc, char** argv)
 	FbxIOSettings* ios = FbxIOSettings::Create(sdkManager, IOSROOT);
 	sdkManager->SetIOSettings(ios);
 
-	fbxsdk::FbxImporter* fbxImporter = fbxsdk::FbxImporter::Create(sdkManager, "");
+	FbxImporter* fbxImporter = FbxImporter::Create(sdkManager, "");
 	if (!fbxImporter->Initialize(importPath.c_str(), -1, sdkManager->GetIOSettings()))
 	{
 		printf("Call to FbxImporter::Initialize() failed.\n");
@@ -111,29 +116,41 @@ int main(int argc, char** argv)
 	fbxImporter->Destroy();
 	sdkManager->Destroy();
 
-	// Find mesh
-	std::function<std::shared_ptr<fbxToEfkMdl::Mesh>(std::shared_ptr<fbxToEfkMdl::Node>)> findMesh = [&](std::shared_ptr<fbxToEfkMdl::Node> node) -> std::shared_ptr<fbxToEfkMdl::Mesh>
+	// Animation mode
+	if (scene->AnimationClips.size() > 0)
 	{
-		if (node->MeshData != nullptr) return node->MeshData;
+		fbxToEfkMdl::VertexAnimation va;
+		va.Export(exportPath.c_str(), scene, modelScale);
+
+		return 0;
+	}
+	
+	// Find mesh
+	std::function<std::vector<std::shared_ptr<fbxToEfkMdl::Mesh>>(std::shared_ptr<fbxToEfkMdl::Node>)> findMesh = [&](std::shared_ptr<fbxToEfkMdl::Node> node) -> std::vector<std::shared_ptr<fbxToEfkMdl::Mesh>>
+	{
+		std::vector<std::shared_ptr<fbxToEfkMdl::Mesh>> data;
+
+		if (node->MeshData != nullptr) data.push_back(node->MeshData);
 
 		for (auto c : node->Children)
 		{
 			auto m = findMesh(c);
-			if (m != nullptr)
+			
+			for (auto m_ : m)
 			{
-				return m;
+				data.push_back(m_);
 			}
 		}
 
-		return nullptr;
+		return data;
 	};
 
-	std::shared_ptr<fbxToEfkMdl::Mesh> mesh = findMesh(scene->Root);
+	std::vector<std::shared_ptr<fbxToEfkMdl::Mesh>> meshes = findMesh(scene->Root);
 
 
 	// Export model.
-	const int Version = 1;
-
+	const int Version = 5;
+	int32_t frameCount = 1;
 	std::ofstream fout;
 	fout.open(exportPath.c_str(), std::ios::out | std::ios::binary);
 	
@@ -144,13 +161,23 @@ int main(int argc, char** argv)
 	}
 
 	fout.write((const char*)&Version, sizeof(int32_t));
+	fout.write((const char*)&modelScale, sizeof(int32_t));
 	fout.write((const char*)&modelCount, sizeof(int32_t));
-	
-	if (mesh != nullptr)
-	{
-		auto vsize = (int32_t)mesh->Vertexes.size();
-		fout.write((const char*)&vsize, sizeof(int32_t));
+	fout.write((const char*)&frameCount, sizeof(int32_t));
 
+	int32_t vcount = 0;
+	int32_t fcount = 0;
+
+	for (auto mesh : meshes)
+	{
+		vcount += mesh->Vertexes.size();
+		fcount += mesh->Faces.size();
+	}
+
+	fout.write((const char*)&vcount, sizeof(int32_t));
+
+	for (auto& mesh : meshes)
+	{
 		for (auto v : mesh->Vertexes)
 		{
 			float p[3];
@@ -190,23 +217,25 @@ int main(int argc, char** argv)
 			fout.write((const char*)uv, sizeof(float) * 2);
 			fout.write((const char*)c, sizeof(uint8_t) * 4);
 		}
+	}
 
-		auto fsize = (int32_t)mesh->Faces.size();
-		fout.write((const char*)&fsize, sizeof(int32_t));
+	fout.write((const char*)&fcount, sizeof(int32_t));
+	int32_t foffset = 0;
 
+	for (auto& mesh : meshes)
+	{
 		for (auto f : mesh->Faces)
 		{
-			fout.write((const char*)&f.Index[0], sizeof(int32_t));
-			fout.write((const char*)&f.Index[1], sizeof(int32_t));
-			fout.write((const char*)&f.Index[2], sizeof(int32_t));
+			int32_t i0 = f.Index[0] + foffset;
+			int32_t i1 = f.Index[1] + foffset;
+			int32_t i2 = f.Index[2] + foffset;
+
+			fout.write((const char*)&(i0), sizeof(int32_t));
+			fout.write((const char*)&(i1), sizeof(int32_t));
+			fout.write((const char*)&(i2), sizeof(int32_t));
 		}
-	}
-	else
-	{
-		auto vsize = (int32_t)0;
-		auto fsize = (int32_t)0;
-		fout.write((const char*)&vsize, sizeof(int32_t));
-		fout.write((const char*)&fsize, sizeof(int32_t));
+
+		foffset += mesh->Vertexes.size();
 	}
 
 	fout.close();

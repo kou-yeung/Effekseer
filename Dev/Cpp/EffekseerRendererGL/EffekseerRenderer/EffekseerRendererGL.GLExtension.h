@@ -46,16 +46,34 @@ namespace GLExt
 #define GL_COMPILE_STATUS 0x8B81
 #define GL_LINK_STATUS 0x8B82
 
+#define GL_VERTEX_ARRAY_BINDING 0x85B5
+
 #define GL_COMPRESSED_RGBA_S3TC_DXT1_EXT 0x83F1
 #define GL_COMPRESSED_RGBA_S3TC_DXT3_EXT 0x83F2
 #define GL_COMPRESSED_RGBA_S3TC_DXT5_EXT 0x83F3
 
+#define GL_FRAMEBUFFER_SRGB 0x8DB9
+
+#define GL_MAP_READ_BIT 0x0001
+#define GL_MAP_WRITE_BIT 0x0002
+#define GL_MAP_INVALIDATE_RANGE_BIT 0x0004
+#define GL_MAP_INVALIDATE_BUFFER_BIT 0x0008
+#define GL_MAP_FLUSH_EXPLICIT_BIT 0x0010
+#define GL_MAP_UNSYNCHRONIZED_BIT 0x0020
+
+#define GL_WRITE_ONLY 0x000088b9
+
+#if defined(__APPLE__) || defined(__ANDROID__)
+#else
 typedef ptrdiff_t GLsizeiptr;
 typedef ptrdiff_t GLintptr;
 typedef char GLchar;
+#endif
 
 bool Initialize(OpenGLDeviceType deviceType);
 bool IsSupportedVertexArray();
+bool IsSupportedBufferRange();
+bool IsSupportedMapBuffer();
 
 void glDeleteBuffers(GLsizei n, const GLuint* buffers);
 GLuint glCreateShader(GLenum type);
@@ -97,6 +115,10 @@ void glGenSamplers(GLsizei n, GLuint *samplers);
 void glDeleteSamplers(GLsizei n, const GLuint * samplers);
 void glSamplerParameteri(GLuint sampler, GLenum pname, GLint param);
 void glBindSampler(GLuint unit, GLuint sampler);
+
+void* glMapBuffer(GLenum target, GLenum access);
+void* glMapBufferRange(GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access);
+GLboolean glUnmapBuffer(GLenum target);
 
 void glCompressedTexImage2D(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const void *data);
 

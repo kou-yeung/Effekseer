@@ -198,6 +198,8 @@ namespace Effekseer.Binary
 					data.Add(pos_r);
 				}
 
+				data.Add(BitConverter.GetBytes(ribbonParamater.SplineDivision.Value));
+
 				// テクスチャ番号
 				/*
 				if (ribbonParamater.ColorTexture.RelativePath != string.Empty)
@@ -209,7 +211,7 @@ namespace Effekseer.Binary
 					data.Add((-1).GetBytes());
 				}
 				*/
-            }
+			}
             else if (value.Type.Value == Data.RendererValues.ParamaterType.Ring)
             {
                 var ringParamater = value.Ring;
@@ -403,7 +405,18 @@ namespace Effekseer.Binary
 
 				if (param.Model.RelativePath != string.Empty)
 				{
-					data.Add(model_and_index[param.Model.RelativePath].GetBytes());
+					var relative_path = param.Model.RelativePath;
+
+					if (string.IsNullOrEmpty(System.IO.Path.GetDirectoryName(relative_path)))
+					{
+						relative_path = System.IO.Path.GetFileNameWithoutExtension(relative_path) + ".efkmodel";
+					}
+					else
+					{
+						relative_path = System.IO.Path.GetDirectoryName(relative_path) + "/" + System.IO.Path.GetFileNameWithoutExtension(relative_path) + ".efkmodel";
+					}
+
+					data.Add(model_and_index[relative_path].GetBytes());
 				}
 				else
 				{
@@ -418,6 +431,8 @@ namespace Effekseer.Binary
 				{
 					data.Add((-1).GetBytes());
 				}
+
+				data.Add(param.Billboard);
 
 				if (param.Lighting.Value)
 				{
@@ -444,6 +459,8 @@ namespace Effekseer.Binary
 
 				data.Add(param.TrackSizeBack);
 				data.Add(BitConverter.GetBytes(param.TrackSizeBack_Fixed.Value));
+				
+				data.Add(BitConverter.GetBytes(param.SplineDivision.Value));
 
 				OutputStandardColor(data, param.ColorLeft, param.ColorLeft_Fixed, param.ColorLeft_Random, param.ColorLeft_Easing, param.ColorLeft_FCurve);
 				OutputStandardColor(data, param.ColorLeftMiddle, param.ColorLeftMiddle_Fixed, param.ColorLeftMiddle_Random, param.ColorLeftMiddle_Easing, param.ColorLeftMiddle_FCurve);

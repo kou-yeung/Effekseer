@@ -1,20 +1,21 @@
 ﻿
-#ifndef	__EFFEKSEERTOOL_RENDERER_H__
-#define	__EFFEKSEERTOOL_RENDERER_H__
+#pragma once
 
-//----------------------------------------------------------------------------------
-// Include
-//----------------------------------------------------------------------------------
 #include "EffekseerTool.Base.h"
 
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
+#ifdef _WIN32
+#include "../Graphics/Platform/DX9/efk.GraphicsDX9.h"
+#include "../Graphics/Platform/DX11/efk.GraphicsDX11.h"
+#endif
+
+#include "../Graphics/Platform/GL/efk.GraphicsGL.h"
+#include "../efk.Base.h"
+
+#include <functional>
+
 namespace EffekseerTool
 {
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
+
 class Renderer
 {
 private:
@@ -22,66 +23,62 @@ private:
 		: public EffekseerRenderer::DistortingCallback
 	{
 	private:
-		Renderer* renderer = nullptr;
+		efk::Graphics* renderer = nullptr;
 	public:
-		DistortingCallback(Renderer* renderer);
+		DistortingCallback(efk::Graphics* renderer);
 		virtual ~DistortingCallback();
 
 		bool OnDistorting();
+
+		bool IsEnabled;
+		bool Blit;
 	};
 
 private:
-	HWND				m_handle;
+	efk::Graphics*	graphics = nullptr;
+
 	int32_t				m_width;
 	int32_t				m_height;
-	LPDIRECT3D9			m_d3d;
-	LPDIRECT3DDEVICE9	m_d3d_device;
+	
+	int32_t				m_windowWidth;
+	int32_t				m_windowHeight;
 
 	int32_t				m_squareMaxCount;
 
 	eProjectionType		m_projection;
 
-	::EffekseerRendererDX9::RendererImplemented*	m_renderer;
+	::EffekseerRenderer::Renderer*	m_renderer;
+	DistortingCallback*		m_distortionCallback;
 
 	::EffekseerRenderer::Grid*	m_grid;
 	::EffekseerRenderer::Guide*	m_guide;
 	::EffekseerRenderer::Culling*	m_culling;
 	::EffekseerRenderer::Paste*	m_background;
 
-	bool		m_recording;
+	bool		m_recording = false;
+	int32_t		m_recordingWidth = 0;
+	int32_t		m_recordingHeight = 0;
 
-	IDirect3DSurface9*	m_recordingTarget;
-	IDirect3DTexture9*	m_recordingTargetTexture;
-	IDirect3DSurface9*	m_recordingDepth;
-	int32_t				m_recordingWidth;
-	int32_t				m_recordingHeight;
-
-	IDirect3DSurface9*	m_recordingTempTarget;
-	IDirect3DSurface9*	m_recordingTempDepth;
-
-	IDirect3DTexture9*	m_backGroundTexture;
-
-	IDirect3DSurface9*	m_renderTarget = nullptr;
-	IDirect3DTexture9*	m_renderTargetTexture = nullptr;
-	IDirect3DSurface9*	m_renderTargetDepth = nullptr;
-
-	IDirect3DSurface9*	m_renderEffectBackTarget = nullptr;
-	IDirect3DTexture9*	m_renderEffectBackTargetTexture = nullptr;
-
-	IDirect3DSurface9*	m_renderDefaultTarget = nullptr;
-	IDirect3DSurface9*	m_renderDefaultDepth = nullptr;
+	Effekseer::TextureLoader*	textureLoader = nullptr;
+	Effekseer::TextureData*		backgroundData = nullptr;
 
 	Effekseer::Matrix44	m_cameraMatTemp;
 	Effekseer::Matrix44	m_projMatTemp;
 
-	bool				m_isSRGBMode = false;
+	std::u16string	backgroundPath;
 
-	void GenerateRenderTargets(int32_t width, int32_t height);
+	bool	m_isSRGBMode = false;
+
+	std::shared_ptr<efk::RenderTexture>	viewRenderTexture;
+	std::shared_ptr<efk::DepthTexture>	viewDepthTexture;
+
+	int32_t		screenWidth = 0;
+	int32_t		screenHeight = 0;
 public:
 	/**
-		@brief	コンストラクタ
+		@brief	Constructor
 	*/
-	Renderer(int32_t squareMaxCount, bool isSRGBMode);
+	Renderer(int32_t squareMaxCount, bool isSRGBMode, efk::DeviceType deviceType);
 
 	/**
 		@brief	デストラクタ
@@ -91,12 +88,7 @@ public:
 	/**
 		@brief	初期化を行う。
 	*/
-	bool Initialize( HWND handle, int width, int height );
-
-	/**
-		@brief	デバイスを取得する。
-	*/
-	LPDIRECT3DDEVICE9 GetDevice();
+	bool Initialize( void* handle, int width, int height );
 
 	/**
 		@brief	画面に表示する。
@@ -194,6 +186,11 @@ public:
 	Effekseer::Vector3D CullingPosition;
 
 	/**
+		@brief	The type of distortion
+	*/
+	eDistortionType		Distortion;
+
+	/**
 		@brief	背景色
 	*/
 	Effekseer::Color GridColor;
@@ -202,6 +199,11 @@ public:
 		@brief	背景色
 	*/
 	Effekseer::Color BackgroundColor;
+
+	/**
+	@brief	背景色
+	*/
+	Effekseer::RenderMode RenderingMode;
 
 	/**
 		@brief	背景が半透明か?
@@ -218,10 +220,9 @@ public:
 	*/
 	bool EndRendering();
 
-	/**
-		@brief	描画中の背景をテクスチャとして背景を出力する。
-	*/
-	IDirect3DTexture9* ExportBackground();
+	bool BeginRenderToView(int32_t width, int32_t height);
+
+	bool EndRenderToView();
 
 	/**
 		@brief	録画開始
@@ -236,14 +237,30 @@ public:
 	/**
 		@brief	背景の読み込み
 	*/
-	void LoadBackgroundImage( void* data, int32_t size );
+	void LoadBackgroundImage(const char16_t* path);
+
+	/**
+		@brief	copy current render target to background buffer
+	*/
+	void CopyToBackground();
+
+	/**
+		@brief	temp
+	*/
+	uint64_t GetViewID();
+
+	efk::Graphics* GetGraphics() const { return graphics; }
+
+	/**
+		Called when device is losted.
+	*/
+	std::function<void()>	LostedDevice;
+
+	/**
+	Called when device is resetted.
+	*/
+	std::function<void()>	ResettedDevice;
+
 };
 
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
 }
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
-#endif	// __EFFEKSEERTOOL_RENDERER_H__

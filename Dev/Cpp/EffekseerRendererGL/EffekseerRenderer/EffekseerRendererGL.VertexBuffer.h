@@ -33,7 +33,7 @@ public:
 
 	static VertexBuffer* Create( RendererImplemented* renderer, int size, bool isDynamic );
 
-	GLuint GetInterface() { return m_buffer; }
+	GLuint GetInterface();
 
 public:	// デバイス復旧用
 	virtual void OnLostDevice();
@@ -45,6 +45,8 @@ public:
 	bool TryRingBufferLock(int32_t size, int32_t& offset, void*& data);
 
 	void Unlock();
+
+	bool IsValid();
 };
 
 //-----------------------------------------------------------------------------------

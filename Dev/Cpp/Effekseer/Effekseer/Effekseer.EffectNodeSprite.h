@@ -31,10 +31,10 @@ struct SpriteColorParameter
 
 		struct
 		{
-			color ll;
-			color lr;
-			color ul;
-			color ur;
+			Color ll;
+			Color lr;
+			Color ul;
+			Color ur;
 		} fixed;
 	};
 };
@@ -81,26 +81,26 @@ public:
 	struct InstanceValues
 	{
 		// 色
-		color _color;
+		Color _color;
 
-		color _originalColor;
+		Color _originalColor;
 		
 		union 
 		{
 			struct
 			{
-			
+				Color _color;
 			} fixed;
 
 			struct
 			{
-
+				Color _color;
 			} random;
 
 			struct
 			{
-				color start;
-				color  end;
+				Color start;
+				Color  end;
 
 			} easing;
 
@@ -143,7 +143,7 @@ public:
 
 	void BeginRendering(int32_t count, Manager* manager);
 
-	void Rendering(const Instance& instance, Manager* manager);
+	void Rendering(const Instance& instance, const Instance* next_instance, Manager* manager) override;
 
 	void EndRendering(Manager* manager);
 

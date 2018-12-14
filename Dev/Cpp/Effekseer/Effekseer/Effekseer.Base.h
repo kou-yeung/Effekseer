@@ -22,6 +22,8 @@
 #include <string>
 #include <queue>
 #include <chrono>
+#include <thread>
+#include <mutex>
 
 //----------------------------------------------------------------------------------
 //
@@ -35,7 +37,7 @@
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
-typedef uint16_t			EFK_CHAR;
+typedef char16_t			EFK_CHAR;
 
 //----------------------------------------------------------------------------------
 //
@@ -52,6 +54,7 @@ class ManagerImplemented;
 class Effect;
 class EffectImplemented;
 class EffectNode;
+class EffectNodeImplemented;
 class EffectNodeRoot;
 class EffectNodeSprite;
 class EffectNodeRibbon;

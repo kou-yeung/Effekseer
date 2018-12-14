@@ -139,11 +139,11 @@ protected:
 		
 		const float stepC = cosf(stepAngle);
 		const float stepS = sinf(stepAngle);
-		float c = cosf(beginAngle);
-		float s = sinf(beginAngle);
-		::Effekseer::Vector3D outerCurrent( c * outerRadius, s * outerRadius, outerHeight );
-		::Effekseer::Vector3D innerCurrent( c * innerRadius, s * innerRadius, innerHeight );
-		::Effekseer::Vector3D centerCurrent( c * centerRadius, s * centerRadius, centerHeight );
+		float cos_ = cosf(beginAngle);
+		float sin_ = sinf(beginAngle);
+		::Effekseer::Vector3D outerCurrent( cos_ * outerRadius, sin_ * outerRadius, outerHeight );
+		::Effekseer::Vector3D innerCurrent( cos_ * innerRadius, sin_ * innerRadius, innerHeight );
+		::Effekseer::Vector3D centerCurrent( cos_ * centerRadius, sin_ * centerRadius, centerHeight );
 		float texCurrent = instanceParameter.UV.X;
 		const float texStep = instanceParameter.UV.Width / parameter.VertexCount;
 		const float v1 = instanceParameter.UV.Y;
@@ -155,22 +155,22 @@ protected:
 
 		for( int i = 0; i < vertexCount; i += 8 )
 		{
-			float old_c = c;
-			float old_s = s;
+			float old_c = cos_;
+			float old_s = sin_;
 
 			float t;
-			t = c * stepC - s * stepS;
-			s = s * stepC + c * stepS;
-			c = t;
+			t = cos_ * stepC - sin_ * stepS;
+			sin_ = sin_ * stepC + cos_ * stepS;
+			cos_ = t;
 
-			outerNext.X = c * outerRadius;
-			outerNext.Y = s * outerRadius;
+			outerNext.X = cos_ * outerRadius;
+			outerNext.Y = sin_ * outerRadius;
 			outerNext.Z = outerHeight;
-			innerNext.X = c * innerRadius;
-			innerNext.Y = s * innerRadius;
+			innerNext.X = cos_ * innerRadius;
+			innerNext.Y = sin_ * innerRadius;
 			innerNext.Z = innerHeight;
-			centerNext.X = c * centerRadius;
-			centerNext.Y = s * centerRadius;
+			centerNext.X = cos_ * centerRadius;
+			centerNext.Y = sin_ * centerRadius;
 			centerNext.Z = centerHeight;
 
 			texNext = texCurrent + texStep;
@@ -229,8 +229,8 @@ protected:
 				outerBefore.Z = outerHeight;
 
 				// 次
-				auto t_n = c * stepC - s * stepS;
-				auto s_n = s * stepC + c * stepS;
+				auto t_n = cos_ * stepC - sin_ * stepS;
+				auto s_n = sin_ * stepC + cos_ * stepS;
 				auto c_n = t_n;
 
 				::Effekseer::Vector3D outerNN;
@@ -291,7 +291,7 @@ protected:
 			{
 				::Effekseer::Vector3D Up( 0.0f, 1.0f, 0.0f );
 
-				::Effekseer::Vector3D::Normal( F, ::Effekseer::Vector3D( - camera.Values[0][2], - camera.Values[1][2], - camera.Values[2][2] ) );
+				::Effekseer::Vector3D::Normal( F, -m_renderer->GetCameraFrontDirection());
 
 				::Effekseer::Vector3D::Normal( R, ::Effekseer::Vector3D::Cross( R, Up, F ) );
 				::Effekseer::Vector3D::Normal( U, ::Effekseer::Vector3D::Cross( U, F, R ) );
@@ -300,7 +300,7 @@ protected:
 			{
 				::Effekseer::Vector3D Up( 0.0f, 1.0f, 0.0f );
 
-				::Effekseer::Vector3D::Normal( F, ::Effekseer::Vector3D( - camera.Values[0][2], - camera.Values[1][2], - camera.Values[2][2] ) );
+				::Effekseer::Vector3D::Normal( F, -m_renderer->GetCameraFrontDirection());
 
 				::Effekseer::Vector3D::Normal( R, ::Effekseer::Vector3D::Cross( R, Up, F ) );
 				::Effekseer::Vector3D::Normal( U, ::Effekseer::Vector3D::Cross( U, F, R ) );
@@ -336,7 +336,7 @@ protected:
 			{
 				U = ::Effekseer::Vector3D( r.Value[1][0], r.Value[1][1], r.Value[1][2] );
 
-				::Effekseer::Vector3D::Normal( F, ::Effekseer::Vector3D( - camera.Values[0][2], - camera.Values[1][2], - camera.Values[2][2] ) );
+				::Effekseer::Vector3D::Normal( F, -m_renderer->GetCameraFrontDirection());
 
 				::Effekseer::Vector3D::Normal( R, ::Effekseer::Vector3D::Cross( R, U, F ) );
 				::Effekseer::Vector3D::Normal( F, ::Effekseer::Vector3D::Cross( F, R, U ) );
@@ -356,6 +356,8 @@ protected:
 			mat_rot.Value[3][0] = t.X;
 			mat_rot.Value[3][1] = t.Y;
 			mat_rot.Value[3][2] = t.Z;
+
+			ApplyDepthOffset(mat_rot, m_renderer->GetCameraFrontDirection(), m_renderer->GetCameraPosition(), s, parameter.DepthOffset, parameter.IsDepthOffsetScaledWithCamera, parameter.IsDepthOffsetScaledWithParticleScale, parameter.IsRightHand);
 			
 			if( m_instanceCount > 1 )
 			{
@@ -381,17 +383,21 @@ protected:
 		}
 		else if( parameter.Billboard == ::Effekseer::BillboardType::Fixed )
 		{
+			auto mat = instanceParameter.SRTMatrix43;
+
+			ApplyDepthOffset(mat, m_renderer->GetCameraFrontDirection(), m_renderer->GetCameraPosition(), parameter.DepthOffset, parameter.IsDepthOffsetScaledWithCamera, parameter.IsDepthOffsetScaledWithParticleScale, parameter.IsRightHand);
+
 			if( m_instanceCount > 1 )
 			{
-				TransformVertexes( verteies, vertexCount, instanceParameter.SRTMatrix43 );
+				TransformVertexes(verteies, vertexCount, mat);
 			}
 			else
 			{
 				for( int32_t i = 0; i < 4; i++ )
 				{
-					m_singleRenderingMatrix.Values[i][0] = instanceParameter.SRTMatrix43.Value[i][0];
-					m_singleRenderingMatrix.Values[i][1] = instanceParameter.SRTMatrix43.Value[i][1];
-					m_singleRenderingMatrix.Values[i][2] = instanceParameter.SRTMatrix43.Value[i][2];
+					m_singleRenderingMatrix.Values[i][0] = mat.Value[i][0];
+					m_singleRenderingMatrix.Values[i][1] = mat.Value[i][1];
+					m_singleRenderingMatrix.Values[i][2] = mat.Value[i][2];
 				}
 			}
 		}
@@ -403,6 +409,7 @@ protected:
 	{
 		if (m_instanceCount == 1)
 		{
+
 			::Effekseer::Matrix44 mat;
 			::Effekseer::Matrix44::Mul(mat, m_singleRenderingMatrix, renderer->GetCameraMatrix());
 

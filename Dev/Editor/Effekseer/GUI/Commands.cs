@@ -16,7 +16,7 @@ namespace Effekseer.GUI
 	{
 		public static void Regist()
 		{
-			Action<Func<bool>> regist = (f) =>
+			Action<Func<bool>> register = (f) =>
 				{
 					var attributes = f.Method.GetCustomAttributes(false);
 					var uniquename = UniqueNameAttribute.GetUniqueName(attributes);
@@ -27,25 +27,25 @@ namespace Effekseer.GUI
 					}
 				};
 
-			regist(New);
-			regist(Open);
-			regist(Overwrite);
-			regist(SaveAs);
-			regist(Exit);
+			register(New);
+			register(Open);
+			register(Overwrite);
+			register(SaveAs);
+			register(Exit);
 
-			regist(Play);
-			regist(Stop);
-			regist(Step);
-			regist(BackStep);
+			register(Play);
+			register(Stop);
+			register(Step);
+			register(BackStep);
 
-			regist(Undo);
-			regist(Redo);
-			regist(Copy);
-			regist(Paste);
-			regist(PasteInfo);
-			regist(AddNode);
-			regist(InsertNode);
-			regist(RemoveNode);
+			register(Undo);
+			register(Redo);
+			register(Copy);
+			register(Paste);
+			register(PasteInfo);
+			register(AddNode);
+			register(InsertNode);
+			register(RemoveNode);
 		}
 
         [Name(value = "InternalNew")]  // 新規
@@ -70,6 +70,17 @@ namespace Effekseer.GUI
 		[UniqueName(value = "Internal.Open")]
 		public static bool Open()
 		{
+            /*
+            var filter = Properties.Resources.ProjectFilter;
+            var filters = filter.Split('|');
+            var result = swig.FileDialog.OpenDialog(filters[1], System.IO.Directory.GetCurrentDirectory());
+
+            if(!string.IsNullOrEmpty(result))
+            {
+                Open(result);
+            }
+            */
+
 			OpenFileDialog ofd = new OpenFileDialog();
 
 			ofd.InitialDirectory = System.IO.Directory.GetCurrentDirectory();
@@ -82,7 +93,7 @@ namespace Effekseer.GUI
 				Open(ofd.FileName);
 			}
 
-			return true;
+            return true;
 		}
 
 		/// <summary>
@@ -106,7 +117,7 @@ namespace Effekseer.GUI
 			{
 				if (Core.LoadFrom(fullPath))
 				{
-					GUIManager.AddRecentFile(fullPath);
+					RecentFiles.AddRecentFile(fullPath);
 				}
 			}
 			catch (Exception e)
@@ -155,7 +166,7 @@ namespace Effekseer.GUI
 			{
 				var filepath = ofd.FileName;
 				Core.SaveTo(filepath);
-				GUIManager.AddRecentFile(filepath);
+				RecentFiles.AddRecentFile(filepath);
 
 				System.IO.Directory.SetCurrentDirectory(System.IO.Path.GetDirectoryName(filepath));
 
@@ -180,13 +191,13 @@ namespace Effekseer.GUI
 		[UniqueName(value = "Internal.PlayViewer")]
 		public static bool Play()
 		{
-			if (GUIManager.DockViewer.IsPlaying && !GUIManager.DockViewer.IsPaused)
+			if (GUIManager.DockViewer.Viewer.IsPlaying && !GUIManager.DockViewer.Viewer.IsPaused)
 			{
 				GUIManager.DockViewer.PauseAndResumeViewer();
 			}
 			else
 			{
-				if (GUIManager.DockViewer.IsPaused)
+				if (GUIManager.DockViewer.Viewer.IsPaused)
 				{
 					GUIManager.DockViewer.PauseAndResumeViewer();
 				}
@@ -203,7 +214,7 @@ namespace Effekseer.GUI
 		[UniqueName(value = "Internal.StopViewer")]
 		public static bool Stop()
 		{
-			GUIManager.DockViewer.StopViewer();
+			GUIManager.DockViewer.Viewer.StopViewer();
 			return true;
 		}
 
@@ -219,7 +230,7 @@ namespace Effekseer.GUI
 		[UniqueName(value = "Internal.BackStepViewer")]
 		public static bool BackStep()
 		{
-			GUIManager.DockViewer.BackStepViewer();
+			GUIManager.DockViewer.Viewer.BackStepViewer();
 			return true;
 		}
 
@@ -407,8 +418,14 @@ namespace Effekseer.GUI
 		static public bool ViewHelp()
 		{
 			string rootDir = Path.GetDirectoryName(GUIManager.GetEntryDirectory());
-			string helpPath = Path.Combine(rootDir, @"Help\index.html");
-			if (File.Exists(helpPath))
+			string helpPath = Path.Combine(rootDir, @"Help\index_en.html");
+
+            if(Core.Language == Language.Japanese)
+            {
+                helpPath = Path.Combine(rootDir, @"Help\index_ja.html");
+            }
+
+            if (File.Exists(helpPath))
 			{
 				Process.Start(helpPath);
 			}

@@ -1,4 +1,4 @@
-﻿
+
 #ifndef	__EFFEKSEERRENDERER_GL_RENDERER_H__
 #define	__EFFEKSEERRENDERER_GL_RENDERER_H__
 
@@ -85,11 +85,27 @@ class Model
 private:
 
 public:
-	GLuint		VertexBuffer;
-	GLuint		IndexBuffer;
-	int32_t		VertexCount;
-	int32_t		IndexCount;
-	int32_t		ModelCount;
+	struct InternalModel
+	{
+		GLuint		VertexBuffer;
+		GLuint		IndexBuffer;
+		int32_t		VertexCount;
+		int32_t		IndexCount;
+
+		std::vector<uint8_t> delayVertexBuffer;
+		std::vector<uint8_t> delayIndexBuffer;
+
+		InternalModel();
+
+		virtual ~InternalModel();
+
+		bool TryDelayLoad();
+	};
+
+
+	InternalModel*				InternalModels = nullptr;
+	int32_t						ModelCount;
+
 
 	Model(void* data, int32_t size);
 	~Model();

@@ -5,9 +5,8 @@
 //----------------------------------------------------------------------------------
 // Include
 //----------------------------------------------------------------------------------
-#include <EffekseerRenderer/EffekseerRendererDX9.Renderer.h>
-#include <EffekseerRenderer/EffekseerRendererDX9.RendererImplemented.h>
-#include <EffekseerRenderer/EffekseerRendererDX9.DeviceObject.h>
+#include "EffekseerTool.Renderer.h"
+#include "../Graphics/efk.ImageRenderer.h"
 
 //-----------------------------------------------------------------------------------
 //
@@ -18,32 +17,20 @@ namespace EffekseerRenderer
 //
 //----------------------------------------------------------------------------------
 class Paste
-	: public EffekseerRendererDX9::DeviceObject
 {
 private:
 	
-	struct Vertex
-	{
-		::Effekseer::Vector3D	Pos;
-		::Effekseer::Vector2D	UV;
-	};
+	efk::ImageRenderer*								imageRenderer = nullptr;
 
-	EffekseerRendererDX9::RendererImplemented*			m_renderer;
-	EffekseerRendererDX9::Shader*						m_shader;
-
-	Paste(EffekseerRendererDX9::RendererImplemented* renderer, EffekseerRendererDX9::Shader* shader);
+	Paste(efk::Graphics* graphics);
 public:
 
 	virtual ~Paste();
 
-	static Paste* Create(EffekseerRendererDX9::RendererImplemented* renderer);
-
-public:	// デバイス復旧用
-	virtual void OnLostDevice();
-	virtual void OnResetDevice();
+	static Paste* Create(efk::Graphics* graphics);
 
 public:
-	void Rendering(IDirect3DTexture9* texture, int32_t width, int32_t height);
+	void Rendering(void* texture, int32_t width, int32_t height);
 };
 //----------------------------------------------------------------------------------
 //

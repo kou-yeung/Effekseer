@@ -30,6 +30,7 @@ namespace EffekseerRendererDX11
 		rsDesc.CullMode = cullTbl[ct];
 		rsDesc.FillMode = D3D11_FILL_SOLID; 
 		rsDesc.DepthClipEnable = TRUE;
+		rsDesc.FrontCounterClockwise = depthFunc == D3D11_COMPARISON_GREATER_EQUAL ? TRUE : FALSE;
 		m_renderer->GetDevice()->CreateRasterizerState( &rsDesc, &m_rStates[ct] );
 	}
 
@@ -84,12 +85,18 @@ namespace EffekseerRendererDX11
 				Desc.RenderTarget[k].DestBlend = D3D11_BLEND_ONE;
 				Desc.RenderTarget[k].SrcBlend = D3D11_BLEND_SRC_ALPHA;
 				Desc.RenderTarget[k].BlendOp = D3D11_BLEND_OP_REV_SUBTRACT;
+				Desc.RenderTarget[k].SrcBlendAlpha = D3D11_BLEND_ZERO;
+				Desc.RenderTarget[k].DestBlendAlpha = D3D11_BLEND_ONE;
+				Desc.RenderTarget[k].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 				break;
 
 			case ::Effekseer::AlphaBlendType::Mul:
 				Desc.RenderTarget[k].DestBlend = D3D11_BLEND_SRC_COLOR;
 				Desc.RenderTarget[k].SrcBlend  = D3D11_BLEND_ZERO;
 				Desc.RenderTarget[k].BlendOp   = D3D11_BLEND_OP_ADD;
+				Desc.RenderTarget[k].SrcBlendAlpha = D3D11_BLEND_ZERO;
+				Desc.RenderTarget[k].DestBlendAlpha = D3D11_BLEND_ONE;
+				Desc.RenderTarget[k].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 				break;
 	
 			}
@@ -109,7 +116,7 @@ namespace EffekseerRendererDX11
 
 			D3D11_FILTER Filter[] = {
 				D3D11_FILTER_MIN_MAG_MIP_POINT,
-				D3D11_FILTER_MIN_MAG_MIP_LINEAR,
+				D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT,
 			};
 
 			uint32_t Anisotropic[] = {

@@ -31,25 +31,25 @@ public:
 	struct InstanceValues
 	{
 		// 色
-		color _color;
-		color _original;
+		Color _color;
+		Color _original;
 
 		union 
 		{
 			struct
 			{
-			
+				Color _color;
 			} fixed;
 
 			struct
 			{
-
+				Color _color;
 			} random;
 
 			struct
 			{
-				color start;
-				color  end;
+				Color start;
+				Color  end;
 
 			} easing;
 
@@ -65,6 +65,7 @@ public:
 	AlphaBlendType		AlphaBlend;
 	int32_t			ModelIndex;
 	int32_t			NormalTextureIndex;
+	BillboardType	Billboard;
 	bool			Lighting;
 	CullingType	Culling;
 
@@ -83,7 +84,7 @@ public:
 
 	void BeginRendering(int32_t count, Manager* manager);
 
-	void Rendering(const Instance& instance, Manager* manager);
+	void Rendering(const Instance& instance, const Instance* next_instance, Manager* manager) override;
 
 	void EndRendering(Manager* manager);
 

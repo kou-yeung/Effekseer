@@ -46,22 +46,22 @@ public:
 	{
 		struct Color
 		{
-			union 
+			union
 			{
 				struct
 				{
-					color color_;
+					Effekseer::Color color_;
 				} fixed;
 
 				struct
 				{
-					color color_;
+					Effekseer::Color color_;
 				} random;
 
 				struct
 				{
-					color start;
-					color  end;
+					Effekseer::Color start;
+					Effekseer::Color  end;
 				} easing;
 
 				struct
@@ -99,21 +99,21 @@ public:
 
 	struct InstanceValues
 	{
-		color	colorLeft;
-		color	colorCenter;
-		color	colorRight;
+		Color	colorLeft;
+		Color	colorCenter;
+		Color	colorRight;
 
-		color	colorLeftMiddle;
-		color	colorCenterMiddle;
-		color	colorRightMiddle;
+		Color	colorLeftMiddle;
+		Color	colorCenterMiddle;
+		Color	colorRightMiddle;
 
-		color	_colorLeft;
-		color	_colorCenter;
-		color	_colorRight;
+		Color	_colorLeft;
+		Color	_colorCenter;
+		Color	_colorRight;
 
-		color	_colorLeftMiddle;
-		color	_colorCenterMiddle;
-		color	_colorRightMiddle;
+		Color	_colorLeftMiddle;
+		Color	_colorCenterMiddle;
+		Color	_colorRightMiddle;
 
 		float	SizeFor;
 		float	SizeMiddle;
@@ -136,16 +136,18 @@ public:
 	StandardColorParameter	TrackColorLeftMiddle;
 	StandardColorParameter	TrackColorCenterMiddle;
 	StandardColorParameter	TrackColorRightMiddle;
-	
+
 	TrackSizeParameter	TrackSizeFor;
 	TrackSizeParameter	TrackSizeMiddle;
 	TrackSizeParameter	TrackSizeBack;
 
 	int TrackTexture;
 
-	EffectNodeTrack( Effect* effect, unsigned char*& pos )
+	int32_t	SplineDivision = 1;
+
+	EffectNodeTrack(Effect* effect, unsigned char*& pos)
 		: EffectNodeImplemented(effect, pos)
-		, TrackTexture	( -1 )
+		, TrackTexture(-1)
 	{
 	}
 
@@ -157,9 +159,11 @@ public:
 
 	void BeginRendering(int32_t count, Manager* manager);
 
-	void BeginRenderingGroup(InstanceGroup* group, Manager* manager);
+	void BeginRenderingGroup(InstanceGroup* group, Manager* manager) override;
 
-	void Rendering(const Instance& instance, Manager* manager);
+	void EndRenderingGroup(InstanceGroup* group, Manager* manager) override;
+
+	void Rendering(const Instance& instance, const Instance* next_instance, Manager* manager) override;
 
 	void EndRendering(Manager* manager);
 
@@ -171,11 +175,11 @@ public:
 
 	eEffectNodeType GetType() const { return EFFECT_NODE_TYPE_TRACK; }
 
-	void InitializeValues(InstanceGroupValues::Color& value, StandardColorParameter& param, Manager* manager);
+	void InitializeValues(InstanceGroupValues::Color& value, StandardColorParameter& param, InstanceGlobal* instanceGlobal);
 	void InitializeValues(InstanceGroupValues::Size& value, TrackSizeParameter& param, Manager* manager);
 	void SetValues(Color& c, const Instance& instance, InstanceGroupValues::Color& value, StandardColorParameter& param, int32_t time, int32_t livedTime);
-	void SetValues( float& s, InstanceGroupValues::Size& value, TrackSizeParameter& param, float time );
-	void LoadValues( TrackSizeParameter& param, unsigned char*& pos );
+	void SetValues(float& s, InstanceGroupValues::Size& value, TrackSizeParameter& param, float time);
+	void LoadValues(TrackSizeParameter& param, unsigned char*& pos);
 };
 
 //----------------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -27,27 +27,27 @@
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -168,7 +168,6 @@
     <ClInclude Include="Effekseer\Effekseer.Client.h" />
     <ClInclude Include="Effekseer\Effekseer.ClientImplemented.h" />
     <ClInclude Include="Effekseer\Effekseer.Color.h" />
-    <ClInclude Include="Effekseer\Effekseer.CriticalSection.h" />
     <ClInclude Include="Effekseer\Effekseer.DefaultEffectLoader.h" />
     <ClInclude Include="Effekseer\Effekseer.DefaultFile.h" />
     <ClInclude Include="Effekseer\Effekseer.Effect.h" />
@@ -188,6 +187,7 @@
     <ClInclude Include="Effekseer\Effekseer.InstanceGlobal.h" />
     <ClInclude Include="Effekseer\Effekseer.InstanceGroup.h" />
     <ClInclude Include="Effekseer\Effekseer.InternalStruct.h" />
+    <ClInclude Include="Effekseer\Effekseer.IntrusiveList.h" />
     <ClInclude Include="Effekseer\Effekseer.Setting.h" />
     <ClInclude Include="Effekseer\Effekseer.Manager.h" />
     <ClInclude Include="Effekseer\Effekseer.ManagerImplemented.h" />
@@ -201,7 +201,6 @@
     <ClInclude Include="Effekseer\Effekseer.Socket.h" />
     <ClInclude Include="Effekseer\Effekseer.SoundLoader.h" />
     <ClInclude Include="Effekseer\Effekseer.TextureLoader.h" />
-    <ClInclude Include="Effekseer\Effekseer.Thread.h" />
     <ClInclude Include="Effekseer\Effekseer.Vector2D.h" />
     <ClInclude Include="Effekseer\Effekseer.Vector3D.h" />
     <ClInclude Include="Effekseer\Renderer\Effekseer.ModelRenderer.h" />
@@ -222,7 +221,6 @@
     <ClCompile Include="Effekseer\Culling\Culling3D.WorldInternal.cpp" />
     <ClCompile Include="Effekseer\Effekseer.Client.cpp" />
     <ClCompile Include="Effekseer\Effekseer.Color.cpp" />
-    <ClCompile Include="Effekseer\Effekseer.CriticalSection.cpp" />
     <ClCompile Include="Effekseer\Effekseer.DefaultEffectLoader.cpp" />
     <ClCompile Include="Effekseer\Effekseer.DefaultFile.cpp" />
     <ClCompile Include="Effekseer\Effekseer.Effect.cpp" />
@@ -238,6 +236,7 @@
     <ClCompile Include="Effekseer\Effekseer.InstanceContainer.cpp" />
     <ClCompile Include="Effekseer\Effekseer.InstanceGlobal.cpp" />
     <ClCompile Include="Effekseer\Effekseer.InstanceGroup.cpp" />
+    <ClCompile Include="Effekseer\Effekseer.IntrusiveList.cpp" />
     <ClCompile Include="Effekseer\Effekseer.Setting.cpp" />
     <ClCompile Include="Effekseer\Effekseer.Manager.cpp" />
     <ClCompile Include="Effekseer\Effekseer.Matrix43.cpp" />
@@ -245,7 +244,6 @@
     <ClCompile Include="Effekseer\Effekseer.RectF.cpp" />
     <ClCompile Include="Effekseer\Effekseer.Server.cpp" />
     <ClCompile Include="Effekseer\Effekseer.Socket.cpp" />
-    <ClCompile Include="Effekseer\Effekseer.Thread.cpp" />
     <ClCompile Include="Effekseer\Effekseer.Vector2D.cpp" />
     <ClCompile Include="Effekseer\Effekseer.Vector3D.cpp" />
   </ItemGroup>

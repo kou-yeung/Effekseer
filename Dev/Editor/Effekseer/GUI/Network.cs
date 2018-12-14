@@ -18,8 +18,11 @@ namespace Effekseer.GUI
 
 		string target;
 		int port;
+		swig.Native native = null;
 
-		public Network()
+		public Action Loaded;
+
+		public Network(swig.Native native)
 		{
 			Target = "127.0.0.1";
 			Port = 60000;
@@ -27,18 +30,21 @@ namespace Effekseer.GUI
 			SendOnLoad = true;
 			SendOnEdit = false;
 			SendOnSave = true;
+
+			this.native = native;
 		}
 
 		public void Connect()
 		{
-			if (Effekseer.Core.Viewer.IsConnected() && Target == target && Port == port) return;
 
-			if (Effekseer.Core.Viewer.IsConnected())
+			if (native.IsConnectingNetwork() && Target == target && Port == port) return;
+
+			if (native.IsConnectingNetwork())
 			{
 				Disconnect();
 			}
 
-			if (Effekseer.Core.Viewer.Connect(Target, Port))
+			if (native.StartNetwork(Target, (ushort)Port))
 			{
 				target = Target;
 				port = Port;
@@ -47,15 +53,20 @@ namespace Effekseer.GUI
 
 		public void Disconnect()
 		{
-			if (!Effekseer.Core.Viewer.IsConnected()) return;
-			Effekseer.Core.Viewer.Disconnect();
+			if (!native.IsConnectingNetwork()) return;
+			native.StopNetwork();
+		}
+
+		public bool IsConnected()
+		{
+			return native.IsConnectingNetwork();
 		}
 
 		public void Update()
 		{
 			if (AutoConnect && time % 60 * 15 == 0)
 			{
-				Effekseer.Core.Viewer.Connect(Target, Port);
+				native.StartNetwork(Target, (ushort)Port);
 			}
 
 			time++;
@@ -63,12 +74,12 @@ namespace Effekseer.GUI
 
 		public unsafe void Send()
 		{
-			if (!Effekseer.Core.Viewer.IsConnected()) return;
+			if (!native.IsConnectingNetwork()) return;
 
 			var data = Binary.Exporter.Export(Core.Option.Magnification);
 			fixed (byte* p = &data[0])
 			{
-				Effekseer.Core.Viewer.SendEffect(System.IO.Path.GetFileNameWithoutExtension(Core.FullPath), new IntPtr(p), data.Length, Core.FullPath);
+				native.SendDataByNetwork(System.IO.Path.GetFileNameWithoutExtension(Core.FullPath), new IntPtr(p), data.Length, Core.FullPath);
 			}
 		}
 
@@ -92,9 +103,9 @@ namespace Effekseer.GUI
 				target = Target;
 				port = Port;
 
-				if (GUIManager.DockNetwork != null && GUIManager.DockNetwork.Created)
+				if(Loaded != null)
 				{
-					GUIManager.DockNetwork.Reload();
+					Loaded();
 				}
 			}
 		}
@@ -145,7 +156,7 @@ namespace Effekseer.GUI
 			var dec = doc.CreateXmlDeclaration("1.0", "utf-8", null);
 			doc.InsertBefore(dec, project_root);
 
-			// ファイル書き込めないケース対策
+			// For failing to save
 			try
 			{
 				doc.Save(path);

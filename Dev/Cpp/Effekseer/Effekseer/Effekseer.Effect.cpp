@@ -99,9 +99,6 @@ Effect* Effect::Create(Manager* manager, const EFK_CHAR* path, float magnificati
 	return effect;
 }
 
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
 Effect* EffectImplemented::Create( Manager* pManager, void* pData, int size, float magnification, const EFK_CHAR* materialPath )
 {
 	if( pData == NULL || size == 0 ) return NULL;
@@ -187,6 +184,12 @@ EffectImplemented::EffectImplemented( Manager* pManager, void* pData, int size )
 	, m_ImageCount		( 0 )
 	, m_ImagePaths		( NULL )
 	, m_pImages			( NULL )
+	, m_normalImageCount(0)
+	, m_normalImagePaths(nullptr)
+	, m_normalImages(nullptr)
+	, m_distortionImageCount(0)
+	, m_distortionImagePaths(nullptr)
+	, m_distortionImages(nullptr)
 	, m_WaveCount		( 0 )
 	, m_WavePaths		( NULL )
 	, m_pWaves			( NULL )
@@ -195,15 +198,8 @@ EffectImplemented::EffectImplemented( Manager* pManager, void* pData, int size )
 	, m_pModels			( NULL )
 	, m_maginification	( 1.0f )
 	, m_maginificationExternal	( 1.0f )
+	, m_defaultRandomSeed	(-1)
 	, m_pRoot			( NULL )
-
-	, m_normalImageCount(0)
-	, m_normalImagePaths(nullptr)
-	, m_normalImages(nullptr)
-
-	, m_distortionImageCount(0)
-	, m_distortionImagePaths(nullptr)
-	, m_distortionImages(nullptr)
 
 {
 	ES_SAFE_ADDREF( m_pManager );
@@ -414,13 +410,33 @@ bool EffectImplemented::Load( void* pData, int size, float mag, const EFK_CHAR* 
 		}
 	}
 
+	if (m_version >= 13)
+	{
+		memcpy(&renderingNodesCount, pos, sizeof(int32_t));
+		pos += sizeof(int32_t);
+
+		memcpy(&renderingNodesThreshold, pos, sizeof(int32_t));
+		pos += sizeof(int32_t);	
+	}
+
 	// 拡大率
 	if( m_version >= 2 )
 	{
 		memcpy( &m_maginification, pos, sizeof(float) );
 		pos += sizeof(float);
-		m_maginification *= mag;
-		m_maginificationExternal = mag;
+	}
+
+	m_maginification *= mag;
+	m_maginificationExternal = mag;
+
+	if (m_version >= 11)
+	{
+		memcpy(&m_defaultRandomSeed, pos, sizeof(int32_t));
+		pos += sizeof(int32_t);
+	}
+	else
+	{
+		m_defaultRandomSeed = -1;
 	}
 
 	// カリング
@@ -516,6 +532,11 @@ void EffectImplemented::Reset()
 	ES_SAFE_DELETE_ARRAY( m_pModels );
 
 	ES_SAFE_DELETE( m_pRoot );
+}
+
+bool EffectImplemented::IsDyanamicMagnificationValid() const
+{
+	return GetVersion() >= 8 || GetVersion() < 2;
 }
 
 //----------------------------------------------------------------------------------

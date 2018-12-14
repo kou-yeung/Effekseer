@@ -1,30 +1,27 @@
-%module EffekseerNative
+%module(directors="1") EffekseerNative
 
 %{
+#include "efk.Base.h"
+#include "GUI/efk.ImageResource.h"
 #include "dll.h"
+#include "GUI/efk.GUIManager.h"
+#include "GUI/efk.FileDialog.h"
 %}
-
-//-----------------------------------------------------------------------------------
-// stdint.hの定義
-//-----------------------------------------------------------------------------------
-typedef signed char int8_t;
-typedef unsigned char uint8_t;
-typedef short int16_t;
-typedef unsigned short uint16_t;
-typedef int int32_t;
-typedef unsigned int uint32_t;
 
 //-----------------------------------------------------------------------------------
 // csharp
 //-----------------------------------------------------------------------------------
 %include "wchar.i"
+%include "stdint.i"
+%include "char16.i"
+%include "typemaps.i"
+%include "arrays_csharp.i"
 
-// セキュリティチェックを外して高速化
 %pragma(csharp) imclassclassmodifiers="
 [System.Security.SuppressUnmanagedCodeSecurity]
 class"
 
-// csharp void の定義
+// csharp define void
 %typemap(ctype) void * "void *"
 %typemap(imtype) void * "System.IntPtr"
 %typemap(cstype) void * "System.IntPtr"
@@ -40,7 +37,52 @@ class"
 //-----------------------------------------------------------------------------------
 %typemap(csclassmodifiers) ViewerParamater "public class"
 
+%apply int INOUT[] { int* v }
+%apply bool INOUT[] { bool* v }
+%apply float INOUT[] { float* v }
+
+%apply float INOUT[] { float* col }
+
+%apply bool *INOUT { bool* p_open }
+%apply bool *INOUT { bool* p_selected }
+
+%apply int INOUT[] { int* v_current_min }
+%apply int INOUT[] { int* v_current_max }
+
+%apply float INOUT[] { float* v_current_min }
+%apply float INOUT[] { float* v_current_max }
+
+
+// FCurve
+%apply float INOUT[] { float* keys }
+%apply float INOUT[] { float* values }
+%apply float INOUT[] { float* leftHandleKeys }
+%apply float INOUT[] { float* leftHandleValues }
+%apply float INOUT[] { float* rightHandleKeys }
+%apply float INOUT[] { float* rightHandleValues }
+%apply bool INOUT[] { bool* kv_selected }
+%apply int *INOUT { int* newCount }
+%apply bool *INOUT { bool* newSelected }
+%apply float *INOUT { float* movedX }
+%apply float *INOUT { float* movedY }
+%apply int *INOUT { int* changedType }
+%apply int INOUT[] { int* interporations }
+
+%apply uint8_t INOUT[] { uint8_t* kv_selected }
+
+%apply int *INOUT { int* size }
+%apply uint8_t INOUT[] { uint8_t* data }
+%apply uint8_t INOUT[] { uint8_t* data_output }
+
+%feature("director") GUIManagerCallback;
+
 //-----------------------------------------------------------------------------------
 //
 //-----------------------------------------------------------------------------------
+%include "Cpp/Viewer/efk.Base.h"
+%include "Cpp/Viewer/GUI/efk.Vec2.h"
+%include "Cpp/Viewer/GUI/efk.ImageResource.h"
 %include "Cpp/Viewer/dll.h"
+%include "Cpp/Viewer/GUI/efk.GUIManager.h"
+%include "Cpp/Viewer/GUI/efk.FileDialog.h"
+

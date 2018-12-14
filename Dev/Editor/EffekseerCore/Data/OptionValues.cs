@@ -7,6 +7,17 @@ namespace Effekseer.Data
 {
 	public class OptionValues
 	{
+		[Name(language = Language.Japanese, value = "描画モード")]
+		[Description(language = Language.Japanese, value = "エフェクトの通常モードの設定")]
+		[Name(language = Language.English, value = "Render Mode")]
+		[Description(language = Language.English, value = "Set the Render Mode of effects")]
+		[Undo(Undo = false)]
+		public Value.Enum<RenderMode> RenderingMode
+		{
+			get;
+			private set;
+		}
+
 		[Name(language = Language.Japanese, value = "グリッド色")]
 		[Description(language = Language.Japanese, value = "グリッド色")]
 		[Name(language = Language.English, value = "Grid Color")]
@@ -119,6 +130,18 @@ namespace Effekseer.Data
 			private set;
 		}
 
+		[Name(language = Language.Japanese, value = "出力時の拡大率")]
+		[Description(language = Language.Japanese, value = "出力時の拡大率")]
+		[Name(language = Language.English, value = "Output Magnification")]
+		[Description(language = Language.English, value = "Output magnification")]
+		[Undo(Undo = false)]
+		[Shown(Shown = false)]
+		public Value.Float ExternalMagnification
+		{
+			get;
+			private set;
+		}
+
 
 		[Name(language = Language.Japanese, value = "出力FPS")]
 		[Description(language = Language.Japanese, value = "出力FPS")]
@@ -225,6 +248,18 @@ namespace Effekseer.Data
 			private set;
 		}
 
+		[Name(language = Language.Japanese, value = "歪み方法")]
+		[Description(language = Language.Japanese, value = "歪み方法")]
+		[Name(language = Language.English, value = "Distortion method")]
+		[Description(language = Language.English, value = "Distortion method")]
+		[Undo(Undo = false)]
+		public Value.Enum<DistortionMethodType> DistortionType
+		{
+			get;
+			private set;
+		}
+
+
         [Name(language = Language.Japanese, value = "言語設定")]
         [Description(language = Language.Japanese, value = "言語設定")]
         [Name(language = Language.English, value = "Language")]
@@ -238,8 +273,9 @@ namespace Effekseer.Data
         
         public OptionValues()
 		{
+			RenderingMode = new Value.Enum<RenderMode>(RenderMode.Normal);
 			BackgroundColor = new Value.Color(0, 0, 0, 255);
-            LasyBackgroundImage = new Lazy<Value.PathForImage>(() => { return new Value.PathForImage(Properties.Resources.ImageFilter, false, ""); });
+            LasyBackgroundImage = new Lazy<Value.PathForImage>(() => { return new Value.PathForImage(Resources.GetString("ImageFilter"), false, ""); });
 			GridColor = new Value.Color(255, 255, 255, 255);
 			
 			IsGridShown = new Value.Boolean(true);
@@ -252,6 +288,7 @@ namespace Effekseer.Data
 			LightColor = new Value.Color(215, 215, 215, 255);
 			LightAmbientColor = new Value.Color(40, 40, 40, 255);
 			Magnification = new Value.Float(1, float.MaxValue, 0.00001f);
+			ExternalMagnification = new Value.Float(1, float.MaxValue, 0.00001f);
 			FPS = new Value.Enum<FPSType>(FPSType._60FPS);
 			Coordinate = new Value.Enum<CoordinateType>(CoordinateType.Right);
 
@@ -262,7 +299,9 @@ namespace Effekseer.Data
 			MouseSlideInvX = new Value.Boolean(false);
 			MouseSlideInvY = new Value.Boolean(false);
 
-            // OSの設定によりデフォ言語を切り替えます
+			DistortionType = new Value.Enum<DistortionMethodType>(DistortionMethodType.Current);
+
+            // Switch the language according to the OS settings
             var culture = System.Globalization.CultureInfo.CurrentCulture;
             if (culture.Name == "ja-JP")
             {
@@ -272,6 +311,16 @@ namespace Effekseer.Data
             {
                 GuiLanguage = new Value.Enum<Language>(Language.English);
             }
+		}
+		
+		public enum RenderMode : int
+		{
+			[Name(value = "通常モード", language = Language.Japanese)]
+			[Name(value = "Normal", language = Language.English)]
+			Normal = 0,
+			[Name(value = "ワイヤーフレーム", language = Language.Japanese)]
+			[Name(value = "Wireframe", language = Language.English)]
+			Wireframe = 1,
 		}
 
 		public enum FPSType : int
@@ -299,6 +348,20 @@ namespace Effekseer.Data
 			[Name(value = "Left-Handed", language = Language.English)]
 			Left = 1,
 		}
+
+		public enum DistortionMethodType : int
+		{
+			[Name(value = "現行", language = Language.Japanese)]
+			[Name(value = "Current", language = Language.English)]
+			Current = 0,
+			[Name(value = "1.20互換", language = Language.Japanese)]
+			[Name(value = "1.20 Compatible", language = Language.English)]
+			Effekseer120 = 1,
+			[Name(value = "無効", language = Language.Japanese)]
+			[Name(value = "Disabled", language = Language.English)]
+			Disabled = 2,
+		}
+
 
 		public enum ColorSpaceType : int
 		{

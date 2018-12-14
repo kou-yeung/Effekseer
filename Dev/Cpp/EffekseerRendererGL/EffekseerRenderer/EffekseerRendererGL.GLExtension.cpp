@@ -77,6 +77,10 @@ typedef void (EFK_STDCALL * FP_glDeleteSamplers) (GLsizei n, const GLuint * samp
 typedef void (EFK_STDCALL * FP_glSamplerParameteri) (GLuint sampler, GLenum pname, GLint param);
 typedef void (EFK_STDCALL * FP_glBindSampler) (GLuint unit, GLuint sampler);
 
+typedef void* (EFK_STDCALL *FP_glMapBuffer)(GLenum target, GLenum access);
+typedef void* (EFK_STDCALL *FP_glMapBufferRange)(GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access);
+typedef GLboolean(EFK_STDCALL *FP_glUnmapBuffer)(GLenum target);
+
 typedef void (EFK_STDCALL * FP_glCompressedTexImage2D) (GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const void *data);
 
 static FP_glDeleteBuffers g_glDeleteBuffers = NULL;
@@ -118,6 +122,10 @@ static FP_glDeleteSamplers g_glDeleteSamplers = nullptr;
 static FP_glSamplerParameteri g_glSamplerParameteri = nullptr;
 static FP_glBindSampler g_glBindSampler = nullptr;
 
+static FP_glMapBuffer g_glMapBuffer = NULL;
+static FP_glMapBufferRange g_glMapBufferRange = NULL;
+static FP_glUnmapBuffer g_glUnmapBuffer = NULL;
+
 static FP_glCompressedTexImage2D g_glCompressedTexImage2D = nullptr;
 
 #elif defined(__EFFEKSEER_RENDERER_GLES2__)
@@ -126,14 +134,24 @@ typedef void (* FP_glGenVertexArraysOES) (GLsizei n, GLuint *arrays);
 typedef void (* FP_glDeleteVertexArraysOES) (GLsizei n, const GLuint *arrays);
 typedef void (* FP_glBindVertexArrayOES) (GLuint array);
 
+typedef void* (* FP_glMapBufferOES)(GLenum target, GLenum access);
+typedef void* (* FP_glMapBufferRangeEXT)(GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access);
+typedef GLboolean (* FP_glUnmapBufferOES)(GLenum target);
+
 static FP_glGenVertexArraysOES g_glGenVertexArraysOES = NULL;
 static FP_glDeleteVertexArraysOES g_glDeleteVertexArraysOES = NULL;
 static FP_glBindVertexArrayOES g_glBindVertexArrayOES = NULL;
+
+static FP_glMapBufferOES g_glMapBufferOES = NULL;
+static FP_glMapBufferRangeEXT g_glMapBufferRangeEXT = NULL;
+static FP_glUnmapBufferOES g_glUnmapBufferOES = NULL;
 
 #endif
 
 static bool g_isInitialized = false;
 static bool g_isSupportedVertexArray = false;
+static bool g_isSurrpotedBufferRange = false;
+static bool g_isSurrpotedMapBuffer = false;
 
 #if _WIN32
 #define GET_PROC(name)	g_##name = (FP_##name)wglGetProcAddress( #name ); if(g_##name==NULL) return false;
@@ -194,9 +212,16 @@ bool Initialize(OpenGLDeviceType deviceType)
 	GET_PROC(glSamplerParameteri);
 	GET_PROC(glBindSampler);
 
+	GET_PROC(glMapBuffer);
+	GET_PROC(glMapBufferRange);
+	GET_PROC(glUnmapBuffer);
+
 	GET_PROC(glCompressedTexImage2D);
 
 	g_isSupportedVertexArray = (g_glGenVertexArrays && g_glDeleteVertexArrays && g_glBindVertexArray);
+	g_isSurrpotedBufferRange = (g_glMapBufferRange && g_glUnmapBuffer);
+	g_isSurrpotedMapBuffer = (g_glMapBuffer && g_glUnmapBuffer);
+
 #endif
 
 #if defined(__EFFEKSEER_RENDERER_GLES2__)
@@ -206,11 +231,28 @@ bool Initialize(OpenGLDeviceType deviceType)
 	g_glDeleteVertexArraysOES = ::glDeleteVertexArraysOES;
 	g_glBindVertexArrayOES = ::glBindVertexArrayOES;
 	g_isSupportedVertexArray = true;
+
+	g_glMapBufferRangeEXT = ::glMapBufferRangeEXT;
+	g_glMapBufferOES = ::glMapBufferOES;
+	g_glUnmapBufferOES = ::glUnmapBufferOES;
+	g_isSurrpotedBufferRange = true;
+	g_isSurrpotedMapBuffer = true;
 #else
 	GET_PROC(glGenVertexArraysOES);
 	GET_PROC(glDeleteVertexArraysOES);
 	GET_PROC(glBindVertexArrayOES);
-	g_isSupportedVertexArray = (g_glGenVertexArraysOES && g_glDeleteVertexArraysOES && g_glBindVertexArrayOES);
+	char *glExtensions = (char *)glGetString(GL_EXTENSIONS);
+	g_isSupportedVertexArray = (g_glGenVertexArraysOES && g_glDeleteVertexArraysOES && g_glBindVertexArrayOES
+		&& ((glExtensions && strstr(glExtensions, "GL_OES_vertex_array_object")) ? true : false));
+
+	// Some smartphone causes segmentation fault.
+	//GET_PROC(glMapBufferRangeEXT);
+
+	GET_PROC(glMapBufferOES);
+	GET_PROC(glUnmapBufferOES);
+	g_isSurrpotedBufferRange = (g_glMapBufferRangeEXT && g_glUnmapBufferOES);
+	g_isSurrpotedMapBuffer = (g_glMapBufferOES && g_glUnmapBufferOES 
+		&& ((glExtensions && strstr(glExtensions, "GL_OES_mapbuffer")) ? true : false));
 #endif
 
 #else
@@ -218,6 +260,8 @@ bool Initialize(OpenGLDeviceType deviceType)
 		deviceType == OpenGLDeviceType::OpenGLES3)
 	{
 		g_isSupportedVertexArray = true;
+		g_isSurrpotedBufferRange = true;
+		g_isSurrpotedMapBuffer = true;
 	}
 #endif
 
@@ -228,6 +272,16 @@ bool Initialize(OpenGLDeviceType deviceType)
 bool IsSupportedVertexArray()
 {
 	return g_isSupportedVertexArray;
+}
+
+bool IsSupportedBufferRange()
+{
+	return g_isSurrpotedBufferRange;
+}
+
+bool IsSupportedMapBuffer()
+{
+	return g_isSurrpotedMapBuffer;
 }
 
 void glDeleteBuffers(GLsizei n, const GLuint* buffers)
@@ -579,6 +633,51 @@ void glBindSampler(GLuint unit, GLuint sampler)
 #elif defined(__EFFEKSEER_RENDERER_GLES2__) || defined(__EFFEKSEER_RENDERER_GL2__)
 #else
 	::glBindSampler(unit, sampler);
+#endif
+}
+
+void* glMapBuffer(GLenum target, GLenum access)
+{
+#if _WIN32
+	return g_glMapBuffer(target, access);
+#elif defined(__EFFEKSEER_RENDERER_GLES2__)
+	return g_glMapBufferOES(target, access);
+#else
+	return ::glMapBuffer(target, access);
+#endif
+}
+
+void* glMapBufferRange(GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access)
+{
+#if _WIN32
+	return g_glMapBufferRange(target, offset, length, access);
+#elif defined(__EFFEKSEER_RENDERER_GLES2__)
+	return g_glMapBufferRangeEXT(target, offset, length, access);
+#else
+
+#if defined(__APPLE__)
+
+#if defined(GL_ARB_map_buffer_range)
+	return ::glMapBufferRange(target, offset, length, access);
+#else
+	return nullptr;
+#endif
+
+#else
+	return ::glMapBufferRange(target, offset, length, access);
+#endif
+
+#endif
+}
+
+GLboolean glUnmapBuffer(GLenum target)
+{
+#if _WIN32
+	return g_glUnmapBuffer(target);
+#elif defined(__EFFEKSEER_RENDERER_GLES2__)
+	return g_glUnmapBufferOES(target);
+#else
+	return ::glUnmapBuffer(target);
 #endif
 }
 

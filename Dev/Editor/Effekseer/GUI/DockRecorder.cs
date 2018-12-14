@@ -61,31 +61,31 @@ namespace Effekseer.GUI
 
 			txt_areaWidth.ReadMethod = () =>
 			{
-				if (GUIManager.DockViewer.ViewerAsDynamic != null) return GUIManager.DockViewer.ViewerAsDynamic.GetViewerParamater().GuideWidth;
+				if (GUIManager.DockViewer.Viewer != null) return GUIManager.DockViewer.Viewer.GetViewerParamater().GuideWidth;
 				return 0;
 			};
 			txt_areaWidth.WriteMethod = (value, wheel) =>
 			{
-				if (GUIManager.DockViewer.ViewerAsDynamic != null)
+				if (GUIManager.DockViewer.Viewer != null)
 				{
-					var param = GUIManager.DockViewer.ViewerAsDynamic.GetViewerParamater();
+					var param = GUIManager.DockViewer.Viewer.GetViewerParamater();
 					param.GuideWidth = Math.Max(0, value);
-					GUIManager.DockViewer.ViewerAsDynamic.SetViewerParamater(param);
+					GUIManager.DockViewer.Viewer.SetViewerParamater(param);
 				}
 			};
 
 			txt_areaHeight.ReadMethod = () =>
 			{
-				if (GUIManager.DockViewer.ViewerAsDynamic != null) return GUIManager.DockViewer.ViewerAsDynamic.GetViewerParamater().GuideHeight;
+				if (GUIManager.DockViewer.Viewer != null) return GUIManager.DockViewer.Viewer.GetViewerParamater().GuideHeight;
 				return 0;
 			};
 			txt_areaHeight.WriteMethod = (value, wheel) =>
 			{
-				if (GUIManager.DockViewer.ViewerAsDynamic != null)
+				if (GUIManager.DockViewer.Viewer != null)
 				{
-					var param = GUIManager.DockViewer.ViewerAsDynamic.GetViewerParamater();
+					var param = GUIManager.DockViewer.Viewer.GetViewerParamater();
 					param.GuideHeight = Math.Max(0, value);
-					GUIManager.DockViewer.ViewerAsDynamic.SetViewerParamater(param);
+					GUIManager.DockViewer.Viewer.SetViewerParamater(param);
 				}
 			};
 
@@ -98,6 +98,15 @@ namespace Effekseer.GUI
 			txt_freq.Reload();
 			
 			Icon = Icon.FromHandle(((Bitmap)Properties.Resources.IconRecorder).GetHicon());
+
+			if(Core.Language == Language.Japanese)
+			{
+				this.Text = "録画";
+			}
+			else
+			{
+				this.Text = "Recorder";
+			}
 		}
 
 		int startingFrame = 1;
@@ -118,9 +127,9 @@ namespace Effekseer.GUI
 			if (!txt_endingFrame.Changed) txt_endingFrame.Reload();
 			if (!txt_freq.Changed) txt_freq.Reload();
 
-			if (GUIManager.DockViewer.ViewerAsDynamic != null)
+			if (GUIManager.DockViewer.Viewer != null)
 			{
-				var param = GUIManager.DockViewer.ViewerAsDynamic.GetViewerParamater();
+				var param = GUIManager.DockViewer.Viewer.GetViewerParamater();
 				cb_area.Checked = param.RendersGuide;
 			}
 
@@ -140,7 +149,7 @@ namespace Effekseer.GUI
 			var height = count / width;
 			if (height * width != count) height++;
 
-			if (GUIManager.DockViewer.ViewerAsDynamic != null)
+			if (GUIManager.DockViewer.Viewer != null)
 			{
 				var dialog = new SaveFileDialog();
 
@@ -168,10 +177,10 @@ namespace Effekseer.GUI
 
 				var filename = dialog.FileName;
 
-				var viewer = GUIManager.DockViewer.ViewerAsDynamic;
-				var param = GUIManager.DockViewer.ViewerAsDynamic.GetViewerParamater();
+				var viewer = GUIManager.DockViewer.Viewer;
+				var param = GUIManager.DockViewer.Viewer.GetViewerParamater();
 
-				if (viewer.LoadEffectFunc != null)
+				//if (viewer.LoadEffectFunc != null)
 				{
 					viewer.LoadEffectFunc();
 				}
@@ -182,28 +191,28 @@ namespace Effekseer.GUI
 
 				if (cb_type.SelectedIndex == 0)
 				{
-					if (!viewer.Record(filename, count, width, startingFrame, freq, (TransparenceType)cb_tranceparence.SelectedIndex))
+					if (!viewer.Record(filename, count, width, startingFrame, freq, (swig.TransparenceType)cb_tranceparence.SelectedIndex))
 					{
 						MessageBox.Show("保存に失敗しました。コンピューターのスペックが低い、もしくは設定に問題があります。");
 					}
 				}
 				else if (cb_type.SelectedIndex == 1)
 				{
-					if (!viewer.Record(filename, count, startingFrame, freq, (TransparenceType)cb_tranceparence.SelectedIndex))
+					if (!viewer.Record(filename, count, startingFrame, freq, (swig.TransparenceType)cb_tranceparence.SelectedIndex))
 					{
 						MessageBox.Show("保存に失敗しました。コンピューターのスペックが低い、もしくは設定に問題があります。");
 					}
 				}
 				else if (cb_type.SelectedIndex == 2)
 				{
-					if (!viewer.RecordAsGifAnimation(filename, count, startingFrame, freq, (TransparenceType)cb_tranceparence.SelectedIndex))
+					if (!viewer.RecordAsGifAnimation(filename, count, startingFrame, freq, (swig.TransparenceType)cb_tranceparence.SelectedIndex))
 					{
 						MessageBox.Show("保存に失敗しました。コンピューターのスペックが低い、もしくは設定に問題があります。");
 					}
 				}
 				else if (cb_type.SelectedIndex == 3)
 				{
-					if (!viewer.RecordAsAVI(filename, count, startingFrame, freq, (TransparenceType)cb_tranceparence.SelectedIndex))
+					if (!viewer.RecordAsAVI(filename, count, startingFrame, freq, (swig.TransparenceType)cb_tranceparence.SelectedIndex))
 					{
 						MessageBox.Show("保存に失敗しました。コンピューターのスペックが低い、もしくは設定に問題があります。");
 					}
@@ -217,9 +226,9 @@ namespace Effekseer.GUI
 		private void cb_guide_CheckedChanged(object sender, EventArgs e)
 		{
 			if (nowReloading) return;
-			var param = GUIManager.DockViewer.ViewerAsDynamic.GetViewerParamater();
+			var param = GUIManager.DockViewer.Viewer.GetViewerParamater();
 			param.RendersGuide = cb_area.Checked;
-			GUIManager.DockViewer.ViewerAsDynamic.SetViewerParamater(param);
+			GUIManager.DockViewer.Viewer.SetViewerParamater(param);
 		}
 
 		private void cb_type_SelectedIndexChanged(object sender, EventArgs e)

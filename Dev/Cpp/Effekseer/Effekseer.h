@@ -24,7 +24,7 @@
 //----------------------------------------------------------------------------------
 
 #ifdef _WIN32
-#include <windows.h>
+//#include <windows.h>
 #elif defined(_PSVITA)
 #include "Effekseer.PSVita.h"
 #elif defined(_PS4)
@@ -42,7 +42,7 @@
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
-typedef uint16_t			EFK_CHAR;
+typedef char16_t			EFK_CHAR;
 
 //----------------------------------------------------------------------------------
 //
@@ -195,6 +195,22 @@ enum class TextureFormatType : int32_t
 	BC1,
 	BC2,
 	BC3,
+};
+
+enum class ZSortType : int32_t
+{
+	None,
+	NormalOrder,
+	ReverseOrder,
+};
+
+//-----------------------------------------------------------------------------------
+// 
+//-----------------------------------------------------------------------------------
+enum class RenderMode : int32_t
+{
+	Normal,				// 通常描画
+	Wireframe,			// ワイヤーフレーム描画
 };
 
 //----------------------------------------------------------------------------------
@@ -445,6 +461,18 @@ public:
 		return m_reference;
 	}
 };
+
+/**
+	@brief	This object generates random values.
+*/
+class IRandObject
+{
+public:
+	virtual float GetRand() = 0;
+
+	virtual float GetRand(float min_, float max_) = 0;
+};
+
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
@@ -566,6 +594,8 @@ public:
 	*/
 	Vector3D( float x, float y, float z );
 
+	Vector3D operator-();
+
 	Vector3D operator + ( const Vector3D& o ) const;
 
 	Vector3D operator - ( const Vector3D& o ) const;
@@ -574,6 +604,10 @@ public:
 
 	Vector3D operator / ( const float& o ) const;
 
+	Vector3D operator * (const Vector3D& o) const;
+
+	Vector3D operator / (const Vector3D& o) const;
+
 	Vector3D& operator += ( const Vector3D& o );
 
 	Vector3D& operator -= ( const Vector3D& o );
@@ -581,6 +615,8 @@ public:
 	Vector3D& operator *= ( const float& o );
 
 	Vector3D& operator /= ( const float& o );
+
+	bool operator == (const Vector3D& o);
 
 	/**
 		@brief	加算
@@ -685,7 +721,7 @@ struct Color
 	/**
 		@brief	コンストラクタ
 	*/
-	Color();
+	Color() = default;
 
 	/**
 		@brief	コンストラクタ
@@ -695,7 +731,13 @@ struct Color
 	/**
 		@brief	乗算
 	*/
-	static void Mul( Color& o, const Color& in1, const Color& in2 );
+	static Color Mul( Color in1, Color in2 );
+	static Color Mul( Color in1, float in2 );
+	
+	/**
+		@brief	線形補間
+	*/
+	static Color Lerp( const Color in1, const Color in2, float t );
 };
 #pragma pack(pop)
 //----------------------------------------------------------------------------------
@@ -1247,7 +1289,7 @@ class Effect
 {
 protected:
 	Effect() {}
-    ~Effect() {}
+    virtual ~Effect() {}
 
 public:
 
@@ -1304,7 +1346,10 @@ public:
 	*/
 	virtual Setting* GetSetting() const = 0;
 
-	/* 拡大率を取得する。 */
+	/**
+	@brief	\~English	Get the magnification multiplied by the magnification at the time of loaded and exported.
+			\~Japanese	読み込み時と出力時の拡大率をかけた拡大率を取得する。
+	*/
 	virtual float GetMaginification() const = 0;
 	
 	/**
@@ -1437,6 +1482,20 @@ struct EffectBasicRenderParameter
 };
 
 /**
+@brief	
+	\~English	Model parameter
+	\~Japanese	モデルパラメーター
+@note
+	\~English	It may change greatly.
+	\~Japanese	大きく変更される可能性があります。
+
+*/
+struct EffectModelParameter
+{
+	bool				Lighting;
+};
+
+/**
 @brief	ノードインスタンス生成クラス
 @note
 エフェクトのノードの実体を生成する。
@@ -1472,6 +1531,12 @@ public:
 	*/
 	virtual void SetBasicRenderParameter(EffectBasicRenderParameter param) = 0;
 
+	/**
+	@brief	
+	\~English	Get a model parameter
+	\~Japanese	モデルパラメーターを取得する。
+	*/
+	virtual EffectModelParameter GetEffectModelParameter() = 0;
 };
 
 //----------------------------------------------------------------------------------
@@ -1507,7 +1572,7 @@ class Manager
 {
 protected:
 	Manager() {}
-    ~Manager() {}
+    virtual ~Manager() {}
 
 public:
 	/**
@@ -1796,6 +1861,13 @@ public:
 	virtual void SetScale( Handle handle, float x, float y, float z ) = 0;
 
 	/**
+	@brief
+		\~English	Specify the color of overall effect.
+		\~Japanese	エフェクト全体の色を指定する。
+	*/
+	virtual void SetAllColor(Handle handle, Color color) = 0;
+
+	/**
 		@brief	エフェクトのインスタンスのターゲット位置を指定する。
 		@param	x	[in]	X座標
 		@param	y	[in]	Y座標
@@ -1833,6 +1905,15 @@ public:
 	virtual void SetRemovingCallback( Handle handle, EffectInstanceRemovingCallback callback ) = 0;
 
 	/**
+	@brief	\~English	Get status that a particle of effect specified is shown.
+	\~Japanese	指定したエフェクトのパーティクルが表示されているか取得する。
+
+	@param	handle	\~English	Particle's handle
+	\~Japanese	パーティクルのハンドル
+	*/
+	virtual bool GetShown(Handle handle) = 0;
+
+	/**
 		@brief	エフェクトのインスタンスをDraw時に描画するか設定する。
 		@param	handle	[in]	インスタンスのハンドル
 		@param	shown	[in]	描画するか?
@@ -1840,11 +1921,43 @@ public:
 	virtual void SetShown( Handle handle, bool shown ) = 0;
 
 	/**
-		@brief	エフェクトのインスタンスをUpdate時に更新するか設定する。
+	@brief	\~English	Get status that a particle of effect specified is paused.
+	\~Japanese	指定したエフェクトのパーティクルが一時停止されているか取得する。
+
+	@param	handle	\~English	Particle's handle
+			\~Japanese	パーティクルのハンドル
+	*/
+	virtual bool GetPaused(Handle handle) = 0;
+
+	/**
+		@brief	\~English	Pause or resume a particle of effect specified.
+		\~Japanese	指定したエフェクトのパーティクルを一時停止、もしくは再開する。
+
 		@param	handle	[in]	インスタンスのハンドル
 		@param	paused	[in]	更新するか?
 	*/
 	virtual void SetPaused( Handle handle, bool paused ) = 0;
+
+	/**
+			@brief	\~English	Pause or resume all particle of effects.
+			\~Japanese	全てのエフェクトのパーティクルを一時停止、もしくは再開する。
+			@param	paused \~English	Pause or resume
+			\~Japanese	一時停止、もしくは再開
+	*/
+	virtual void SetPausedToAllEffects(bool paused) = 0;
+
+	/**
+	@brief
+	\~English	Get a playing speed of particle of effect.
+	\~Japanese	エフェクトのパーティクルの再生スピードを取得する。
+	@param	handle
+	\~English	Particle's handle
+	\~Japanese	パーティクルのハンドル
+	@return
+	\~English	Speed
+	\~Japanese	スピード
+	*/
+	virtual float GetSpeed(Handle handle) const = 0;
 
 	/**
 		@brief	エフェクトのインスタンスを再生スピードを設定する。
@@ -1895,14 +2008,46 @@ public:
 	virtual void UpdateHandle( Handle handle, float deltaFrame = 1.0f ) = 0;
 
 	/**
-		@brief	描画処理を行う。
+	@brief	
+	\~English	Draw particles.
+	\~Japanese	描画処理を行う。
 	*/
 	virtual void Draw() = 0;
 	
 	/**
-		@brief	ハンドル単位の描画処理を行う。
+	@brief
+	\~English	Draw particles in the back of priority 0.
+	\~Japanese	背面の描画処理を行う。
+	*/
+	virtual void DrawBack() = 0;
+
+	/**
+	@brief
+	\~English	Draw particles in the front of priority 0.
+	\~Japanese	前面の描画処理を行う。
+	*/
+	virtual void DrawFront() = 0;
+
+	/**
+	@brief
+	\~English	Draw particles with a handle.
+	\~Japanese	ハンドル単位の描画処理を行う。
 	*/
 	virtual void DrawHandle( Handle handle ) = 0;
+
+	/**
+	@brief
+	\~English	Draw particles in the back of priority 0.
+	\~Japanese	背面のハンドル単位の描画処理を行う。
+	*/
+	virtual void DrawHandleBack(Handle handle) = 0;
+	
+	/**
+	@brief
+	\~English	Draw particles in the front of priority 0.
+	\~Japanese	前面のハンドル単位の描画処理を行う。
+	*/
+	virtual void DrawHandleFront(Handle handle) = 0;
 
 	/**
 		@brief	再生する。
@@ -1914,6 +2059,22 @@ public:
 	*/
 	virtual Handle Play( Effect* effect, float x, float y, float z ) = 0;
 	
+	/**
+		@brief
+		\~English	Play an effect.
+		\~Japanese	エフェクトを再生する。
+		@param	effect
+		\~English	Played effect
+		\~Japanese	再生されるエフェクト
+		@param	position
+		\~English	Initial position
+		\~Japanese	初期位置
+		@param	startFrame
+		\~English	A time to play from middle
+		\~Japanese	途中から再生するための時間
+	*/
+	virtual Handle Play(Effect* effect, const Vector3D& position, int32_t startFrame = 0) = 0;
+
 	/**
 		@brief	Update処理時間を取得。
 	*/
@@ -1989,9 +2150,16 @@ public:
 		bool				ZTest;
 		bool				ZWrite;
 		BillboardType		Billboard;
+		bool				IsRightHand;
 
 		bool				Distortion;
 		float				DistortionIntensity;
+
+		float				DepthOffset;
+		bool				IsDepthOffsetScaledWithCamera;
+		bool				IsDepthOffsetScaledWithParticleScale;
+
+		ZSortType			ZSort;
 	};
 
 	struct InstanceParameter
@@ -1999,7 +2167,7 @@ public:
 		Matrix43		SRTMatrix43;
 		Color		AllColor;
 
-		// 左下、右下、左上、右上
+		// Lower left, Lower right, Upper left, Upper right
 		Color		Colors[4];
 
 		Vector2D	Positions[4];
@@ -2040,65 +2208,70 @@ public:
 //----------------------------------------------------------------------------------
 namespace Effekseer
 {
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
+	//----------------------------------------------------------------------------------
+	//
+	//----------------------------------------------------------------------------------
 
-class RibbonRenderer
-{
-public:
-
-	struct NodeParameter
+	class RibbonRenderer
 	{
-		Effect*				EffectPointer;
-		int32_t				ColorTextureIndex;
-		AlphaBlendType			AlphaBlend;
-		TextureFilterType	TextureFilter;
-		TextureWrapType	TextureWrap;
-		bool				ZTest;
-		bool				ZWrite;
-		bool				ViewpointDependent;
+	public:
 
-		bool				Distortion;
-		float				DistortionIntensity;
+		struct NodeParameter
+		{
+			Effect*				EffectPointer;
+			int32_t				ColorTextureIndex;
+			AlphaBlendType			AlphaBlend;
+			TextureFilterType	TextureFilter;
+			TextureWrapType	TextureWrap;
+			bool				ZTest;
+			bool				ZWrite;
+			bool				ViewpointDependent;
+
+			bool				Distortion;
+			float				DistortionIntensity;
+
+			int32_t				SplineDivision;
+		};
+
+		struct InstanceParameter
+		{
+			int32_t			InstanceCount;
+			int32_t			InstanceIndex;
+			Matrix43		SRTMatrix43;
+			Color		AllColor;
+
+			// Lower left, Lower right, Upper left, Upper right
+			Color	Colors[4];
+
+			float	Positions[4];
+
+			RectF	UV;
+		};
+
+	public:
+		RibbonRenderer() {}
+
+		virtual ~RibbonRenderer() {}
+
+		virtual void BeginRendering(const NodeParameter& parameter, int32_t count, void* userData) {}
+
+		virtual void Rendering(const NodeParameter& parameter, const InstanceParameter& instanceParameter, void* userData) {}
+
+		virtual void EndRendering(const NodeParameter& parameter, void* userData) {}
+
+		virtual void BeginRenderingGroup(const NodeParameter& parameter, int32_t count, void* userData) {}
+
+		virtual void EndRenderingGroup(const NodeParameter& parameter, int32_t count, void* userData) {}
 	};
 
-	struct InstanceParameter
-	{
-		int32_t			InstanceCount;
-		int32_t			InstanceIndex;
-		Matrix43		SRTMatrix43;
-		Color		AllColor;
-
-		// 左、右
-		Color		Colors[2];
-
-		float	Positions[2];
-
-		RectF	UV;
-	};
-
-public:
-	RibbonRenderer() {}
-
-	virtual ~RibbonRenderer() {}
-
-	virtual void BeginRendering( const NodeParameter& parameter, int32_t count, void* userData ) {}
-
-	virtual void Rendering( const NodeParameter& parameter, const InstanceParameter& instanceParameter, void* userData ) {}
-
-	virtual void EndRendering( const NodeParameter& parameter, void* userData ) {}
-};
-
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
+	//----------------------------------------------------------------------------------
+	//
+	//----------------------------------------------------------------------------------
 }
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
 #endif	// __EFFEKSEER_RIBBON_RENDERER_H__
-
 #ifndef	__EFFEKSEER_RING_RENDERER_H__
 #define	__EFFEKSEER_RING_RENDERER_H__
 
@@ -2130,9 +2303,14 @@ public:
 		bool				ZWrite;
 		BillboardType		Billboard;
 		int32_t				VertexCount;
+		bool				IsRightHand;
 
 		bool				Distortion;
 		float				DistortionIntensity;
+
+		float				DepthOffset;
+		bool				IsDepthOffsetScaledWithCamera;
+		bool				IsDepthOffsetScaledWithParticleScale;
 	};
 
 	struct InstanceParameter
@@ -2198,6 +2376,8 @@ public:
 		TextureWrapType	TextureWrap;
 		bool				ZTest;
 		bool				ZWrite;
+		BillboardType		Billboard;
+
 		bool				Lighting;
 		CullingType		Culling;
 		int32_t				ModelIndex;
@@ -2208,6 +2388,10 @@ public:
 
 		bool				Distortion;
 		float				DistortionIntensity;
+
+		float				DepthOffset;
+		bool				IsDepthOffsetScaledWithCamera;
+		bool				IsDepthOffsetScaledWithParticleScale;
 	};
 
 	struct InstanceParameter
@@ -2215,6 +2399,7 @@ public:
 		Matrix43		SRTMatrix43;
 		RectF			UV;
 		Color			AllColor;
+		int32_t			Time;
 	};
 
 public:
@@ -2250,75 +2435,80 @@ public:
 //----------------------------------------------------------------------------------
 namespace Effekseer
 {
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
+	//----------------------------------------------------------------------------------
+	//
+	//----------------------------------------------------------------------------------
 
-class TrackRenderer
-{
-public:
-
-	struct NodeParameter
+	class TrackRenderer
 	{
-		Effect*				EffectPointer;
-		int32_t				ColorTextureIndex;
-		AlphaBlendType			AlphaBlend;
-		TextureFilterType	TextureFilter;
-		TextureWrapType		TextureWrap;
-		bool				ZTest;
-		bool				ZWrite;
+	public:
 
-		bool				Distortion;
-		float				DistortionIntensity;
+		struct NodeParameter
+		{
+			Effect*				EffectPointer;
+			int32_t				ColorTextureIndex;
+			AlphaBlendType			AlphaBlend;
+			TextureFilterType	TextureFilter;
+			TextureWrapType		TextureWrap;
+			bool				ZTest;
+			bool				ZWrite;
+
+			bool				Distortion;
+			float				DistortionIntensity;
+
+			int32_t				SplineDivision;
+		};
+
+		struct InstanceGroupParameter
+		{
+
+		};
+
+		struct InstanceParameter
+		{
+			int32_t			InstanceCount;
+			int32_t			InstanceIndex;
+			Matrix43		SRTMatrix43;
+
+			Color	ColorLeft;
+			Color	ColorCenter;
+			Color	ColorRight;
+
+			Color	ColorLeftMiddle;
+			Color	ColorCenterMiddle;
+			Color	ColorRightMiddle;
+
+			float	SizeFor;
+			float	SizeMiddle;
+			float	SizeBack;
+
+			RectF	UV;
+		};
+
+	public:
+		TrackRenderer() {}
+
+		virtual ~TrackRenderer() {}
+
+		virtual void BeginRendering(const NodeParameter& parameter, int32_t count, void* userData) {}
+
+		virtual void Rendering(const NodeParameter& parameter, const InstanceParameter& instanceParameter, void* userData) {}
+
+		virtual void EndRendering(const NodeParameter& parameter, void* userData) {}
+
+		virtual void BeginRenderingGroup(const NodeParameter& parameter, int32_t count, void* userData) {}
+
+		virtual void EndRenderingGroup(const NodeParameter& parameter, int32_t count, void* userData) {}
 	};
 
-	struct InstanceGroupParameter
-	{
-		
-	};
-
-	struct InstanceParameter
-	{
-		int32_t			InstanceCount;
-		int32_t			InstanceIndex;
-		Matrix43		SRTMatrix43;
-
-		Color	ColorLeft;
-		Color	ColorCenter;
-		Color	ColorRight;
-
-		Color	ColorLeftMiddle;
-		Color	ColorCenterMiddle;
-		Color	ColorRightMiddle;
-
-		float	SizeFor;
-		float	SizeMiddle;
-		float	SizeBack;
-
-		RectF	UV;
-	};
-
-public:
-	TrackRenderer() {}
-
-	virtual ~TrackRenderer() {}
-
-	virtual void BeginRendering( const NodeParameter& parameter, int32_t count, void* userData ) {}
-
-	virtual void Rendering( const NodeParameter& parameter, const InstanceParameter& instanceParameter, void* userData ) {}
-
-	virtual void EndRendering( const NodeParameter& parameter, void* userData ) {}
-};
-
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
+	//----------------------------------------------------------------------------------
+	//
+	//----------------------------------------------------------------------------------
 }
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
 #endif	// __EFFEKSEER_TRACK_RENDERER_H__
-
 #ifndef	__EFFEKSEER_EFFECTLOADER_H__
 #define	__EFFEKSEER_EFFECTLOADER_H__
 
@@ -2515,7 +2705,9 @@ namespace Effekseer {
 //
 //----------------------------------------------------------------------------------
 /**
-	@brief	モデルクラス
+	@brief
+	\~English	Model class
+	\~Japanese	モデルクラス
 */
 class Model
 {
@@ -2562,104 +2754,140 @@ private:
 
 	int32_t		m_version;
 
-	int32_t		m_vertexCount;
-	Vertex*		m_vertexes;
+	struct InternalModel
+	{
+		int32_t		m_vertexCount;
+		Vertex*		m_vertexes;
 
-	int32_t		m_faceCount;
-	Face*		m_faces;
+		int32_t		m_faceCount;
+		Face*		m_faces;
+	};
+
+	InternalModel*	models;
 
 	int32_t		m_modelCount;
+	int32_t		m_frameCount;
 
+protected:
+	int32_t		m_vertexSize = sizeof(Vertex);
 public:
+
 	/**
-		@brief	コンストラクタ
+	@brief
+	\~English	Constructor
+	\~Japanese	コンストラクタ
 	*/
-	Model( void* data, int32_t size ) 
-		: m_data	( NULL )
-		, m_size	( size )
-		, m_version	( 0 )
-		, m_vertexCount	( 0 )
-		, m_vertexes	( NULL )
-		, m_faceCount	( 0 )
-		, m_faces		( NULL )
+	Model(void* data, int32_t size)
+		: m_data(NULL)
+		, m_size(size)
+		, m_version(0)
+		, models(nullptr)
 	{
 		m_data = new uint8_t[m_size];
-		memcpy( m_data, data, m_size );
+		memcpy(m_data, data, m_size);
 
-		uint8_t* p = (uint8_t*)m_data;
-	
-		memcpy( &m_version, p, sizeof(int32_t) );
+		uint8_t* p = (uint8_t*) m_data;
+
+		memcpy(&m_version, p, sizeof(int32_t));
 		p += sizeof(int32_t);
 
-		memcpy( &m_modelCount, p, sizeof(int32_t) );
-		p += sizeof(int32_t);
-
-		memcpy( &m_vertexCount, p, sizeof(int32_t) );
-		p += sizeof(int32_t);
-
-		if (m_version >= 1)
+		// load scale except version 3(for compatibility)
+		if (m_version == 2 || m_version >= 5)
 		{
-			m_vertexes = (Vertex*) p;
-			p += (sizeof(Vertex) * m_vertexCount);
+			// Scale
+			p += sizeof(int32_t);
+		}
+
+		memcpy(&m_modelCount, p, sizeof(int32_t));
+		p += sizeof(int32_t);
+
+		if (m_version >= 5)
+		{
+			memcpy(&m_frameCount, p, sizeof(int32_t));
+			p += sizeof(int32_t);
 		}
 		else
 		{
-			// 新規バッファ確保
-			m_vertexes = new Vertex[m_vertexCount];
-
-			for (int32_t i = 0; i < m_vertexCount; i++)
-			{
-				memcpy(&m_vertexes[i], p, sizeof(Vertex) - sizeof(Color));
-				m_vertexes[i].VColor = Color(255, 255, 255, 255);
-
-				p += sizeof(Vertex) - sizeof(Color);
-			}
+			m_frameCount = 1;
 		}
-		
-		memcpy( &m_faceCount, p, sizeof(int32_t) );
-		p += sizeof(int32_t);
 
-		m_faces = (Face*)p;
-		p += ( sizeof(Face) * m_faceCount );
+		models = new InternalModel[m_frameCount];
+
+		for (int32_t f = 0; f < m_frameCount; f++)
+		{
+			memcpy(&models[f].m_vertexCount, p, sizeof(int32_t));
+			p += sizeof(int32_t);
+
+			if (m_version >= 1)
+			{
+				models[f].m_vertexes = (Vertex*) p;
+				p += (sizeof(Vertex) * models[f].m_vertexCount);
+			}
+			else
+			{
+				// allocate new buffer
+				models[f].m_vertexes = new Vertex[models[f].m_vertexCount];
+
+				for (int32_t i = 0; i < models[f].m_vertexCount; i++)
+				{
+					memcpy(&models[f].m_vertexes[i], p, sizeof(Vertex) - sizeof(Color));
+					models[f].m_vertexes[i].VColor = Color(255, 255, 255, 255);
+
+					p += sizeof(Vertex) - sizeof(Color);
+				}
+			}
+
+			memcpy(&models[f].m_faceCount, p, sizeof(int32_t));
+			p += sizeof(int32_t);
+
+			models[f].m_faces = (Face*) p;
+			p += (sizeof(Face) * models[f].m_faceCount);
+		}
 	}
 
-	Vertex* GetVertexes() const { return m_vertexes; }
-	int32_t GetVertexCount() { return m_vertexCount; }
+	Vertex* GetVertexes(int32_t index = 0) const { return models[index].m_vertexes; }
+	int32_t GetVertexCount(int32_t index = 0) { return models[index].m_vertexCount; }
 
-	Face* GetFaces() const { return m_faces; }
-	int32_t GetFaceCount() { return m_faceCount; }
+	Face* GetFaces(int32_t index = 0) const { return models[index].m_faces; }
+	int32_t GetFaceCount(int32_t index = 0) { return models[index].m_faceCount; }
+
+	int32_t GetFrameCount() const { return m_frameCount; }
 
 	int32_t GetModelCount() { return m_modelCount; }
 
+	int32_t GetVertexSize() const { return m_vertexSize; }
+
 	/**
-		@brief	デストラクタ
+		@brief
+		\~English	Destructor
+		\~Japanese	デストラクタ
 	*/
 	virtual ~Model()
 	{
 		if (m_version == 0)
 		{
-			ES_SAFE_DELETE_ARRAY(m_vertexes);
+			ES_SAFE_DELETE_ARRAY(models[0].m_vertexes);
 		}
 
-		ES_SAFE_DELETE_ARRAY( m_data );
+		ES_SAFE_DELETE_ARRAY(models);
+		ES_SAFE_DELETE_ARRAY(m_data);
 	}
 
-	Emitter GetEmitter( Manager* manager, CoordinateSystem coordinate, float magnification )
+	Emitter GetEmitter(IRandObject* g, int32_t time, CoordinateSystem coordinate, float magnification )
 	{
-		RandFunc randFunc = manager->GetRandFunc();
-		int32_t randMax = manager->GetRandMax();
+		time = time % GetFrameCount();
 
-		int32_t faceInd = (int32_t)( (GetFaceCount() - 1) * ( (float)randFunc() / (float)randMax ) );
-		faceInd = Clamp( faceInd, GetFaceCount() - 1, 0 );
-		Face& face = GetFaces()[faceInd];
-		Vertex& v0 = GetVertexes()[face.Indexes[0]];
-		Vertex& v1 = GetVertexes()[face.Indexes[1]];
-		Vertex& v2 = GetVertexes()[face.Indexes[2]];
+		int32_t faceInd = (int32_t) ((GetFaceCount(time) - 1) * (g->GetRand()));
+		faceInd = Clamp(faceInd, GetFaceCount(time) - 1, 0);
+		Face& face = GetFaces(time)[faceInd];
+		Vertex& v0 = GetVertexes(time)[face.Indexes[0]];
+		Vertex& v1 = GetVertexes(time)[face.Indexes[1]];
+		Vertex& v2 = GetVertexes(time)[face.Indexes[2]];
 
-		float p1 = ( (float)randFunc() / (float)randMax );
-		float p2 = ( (float)randFunc() / (float)randMax );
+		float p1 = g->GetRand();
+		float p2 = g->GetRand();
 
-		/* 面内に収める */
+		// Fit within plane
 		if( p1 + p2 > 1.0f )
 		{
 			p1 = 1.0f - p1;
@@ -2685,14 +2913,13 @@ public:
 		return emitter;
 	}
 
-	Emitter GetEmitterFromVertex( Manager* manager, CoordinateSystem coordinate, float magnification )
+	Emitter GetEmitterFromVertex(IRandObject* g, int32_t time, CoordinateSystem coordinate, float magnification)
 	{
-		RandFunc randFunc = manager->GetRandFunc();
-		int32_t randMax = manager->GetRandMax();
+		time = time % GetFrameCount();
 
-		int32_t vertexInd = (int32_t)( (GetVertexCount() - 1) * ( (float)randFunc() / (float)randMax ) );
-		vertexInd = Clamp( vertexInd, GetVertexCount() - 1, 0 );
-		Vertex& v = GetVertexes()[vertexInd];
+		int32_t vertexInd = (int32_t) ((GetVertexCount(time) - 1) * (g->GetRand()));
+		vertexInd = Clamp(vertexInd, GetVertexCount(time) - 1, 0);
+		Vertex& v = GetVertexes(time)[vertexInd];
 		
 		Emitter emitter;
 		emitter.Position = v.Position * magnification;
@@ -2711,10 +2938,12 @@ public:
 		return emitter;
 	}
 
-	Emitter GetEmitterFromVertex( int32_t index, CoordinateSystem coordinate, float magnification )
+	Emitter GetEmitterFromVertex(int32_t index, int32_t time, CoordinateSystem coordinate, float magnification)
 	{
-		int32_t vertexInd = index % GetVertexCount();
-		Vertex& v = GetVertexes()[vertexInd];
+		time = time % GetFrameCount();
+
+		int32_t vertexInd = index % GetVertexCount(time);
+		Vertex& v = GetVertexes(time)[vertexInd];
 		
 		Emitter emitter;
 		emitter.Position = v.Position * magnification;
@@ -2733,17 +2962,16 @@ public:
 		return emitter;
 	}
 
-	Emitter GetEmitterFromFace( Manager* manager, CoordinateSystem coordinate, float magnification )
+	Emitter GetEmitterFromFace(IRandObject* g, int32_t time, CoordinateSystem coordinate, float magnification)
 	{
-		RandFunc randFunc = manager->GetRandFunc();
-		int32_t randMax = manager->GetRandMax();
+		time = time % GetFrameCount();
 
-		int32_t faceInd = (int32_t)( (GetFaceCount() - 1) * ( (float)randFunc() / (float)randMax ) );
-		faceInd = Clamp( faceInd, GetFaceCount() - 1, 0 );
-		Face& face = GetFaces()[faceInd];
-		Vertex& v0 = GetVertexes()[face.Indexes[0]];
-		Vertex& v1 = GetVertexes()[face.Indexes[1]];
-		Vertex& v2 = GetVertexes()[face.Indexes[2]];
+		int32_t faceInd = (int32_t) ((GetFaceCount(time) - 1) * (g->GetRand()));
+		faceInd = Clamp(faceInd, GetFaceCount(time) - 1, 0);
+		Face& face = GetFaces(time)[faceInd];
+		Vertex& v0 = GetVertexes(time)[face.Indexes[0]];
+		Vertex& v1 = GetVertexes(time)[face.Indexes[1]];
+		Vertex& v2 = GetVertexes(time)[face.Indexes[2]];
 
 		float p0 = 1.0f / 3.0f;
 		float p1 = 1.0f / 3.0f;
@@ -2766,13 +2994,15 @@ public:
 		return emitter;
 	}
 
-	Emitter GetEmitterFromFace( int32_t index, CoordinateSystem coordinate, float magnification )
+	Emitter GetEmitterFromFace(int32_t index, int32_t time, CoordinateSystem coordinate, float magnification)
 	{
-		int32_t faceInd = index % (GetFaceCount() - 1);
-		Face& face = GetFaces()[faceInd];
-		Vertex& v0 = GetVertexes()[face.Indexes[0]];
-		Vertex& v1 = GetVertexes()[face.Indexes[1]];
-		Vertex& v2 = GetVertexes()[face.Indexes[2]];
+		time = time % GetFrameCount();
+
+		int32_t faceInd = index % (GetFaceCount(time) - 1);
+		Face& face = GetFaces(time)[faceInd];
+		Vertex& v0 = GetVertexes(time)[face.Indexes[0]];
+		Vertex& v1 = GetVertexes(time)[face.Indexes[1]];
+		Vertex& v2 = GetVertexes(time)[face.Indexes[2]];
 
 		float p0 = 1.0f / 3.0f;
 		float p1 = 1.0f / 3.0f;
@@ -3053,8 +3283,6 @@ namespace Effekseer {
 #ifndef	__EFFEKSEER_SERVER_H__
 #define	__EFFEKSEER_SERVER_H__
 
-#if !( defined(_PSVITA) || defined(_PS4) || defined(_SWITCH) || defined(_XBOXONE) )
-
 //----------------------------------------------------------------------------------
 // Include
 //----------------------------------------------------------------------------------
@@ -3087,13 +3315,13 @@ public:
 		@param	key	[in]	検索用キー
 		@param	effect	[in]	リロードする対象のエフェクト
 	*/
-	virtual void Regist( const EFK_CHAR* key, Effect* effect ) = 0;
+	virtual void Register( const EFK_CHAR* key, Effect* effect ) = 0;
 
 	/**
 		@brief	エフェクトをリロードの対象から外す。
 		@param	effect	[in]	リロードから外すエフェクト
 	*/
-	virtual void Unregist( Effect* effect ) = 0;
+	virtual void Unregister( Effect* effect ) = 0;
 
 	/**
 		@brief	サーバーを更新し、エフェクトのリロードを行う。
@@ -3113,8 +3341,6 @@ public:
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
-
-#endif	// #if !( defined(_PSVITA) || defined(_PS4) || defined(_SWITCH) || defined(_XBOXONE) )
 
 #endif	// __EFFEKSEER_SERVER_H__
 
@@ -3161,126 +3387,3 @@ public:
 #endif	// #if !( defined(_PSVITA) || defined(_PS4) || defined(_SWITCH) || defined(_XBOXONE) )
 
 #endif	// __EFFEKSEER_CLIENT_H__
-
-#ifndef	__EFFEKSEER_CRITICALSESSION_H__
-#define	__EFFEKSEER_CRITICALSESSION_H__
-
-//----------------------------------------------------------------------------------
-// Include
-//----------------------------------------------------------------------------------
-
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
-namespace Effekseer
-{
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
-/**
-	@brief	クリティカルセクション
-*/
-class CriticalSection
-{
-private:
-#ifdef _WIN32
-	mutable CRITICAL_SECTION m_criticalSection;
-#elif defined(_PSVITA) || defined(_PS4) || defined(_SWITCH) || defined(_XBOXONE)
-	mutable CONSOLE_GAME_MUTEX	m_mutex;
-#else
-	mutable pthread_mutex_t m_mutex;
-#endif
-
-public:
-
-	CriticalSection();
-
-	~CriticalSection();
-
-	void Enter() const;
-
-	void Leave() const;
-};
-
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
-}
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
-#endif	//	__EFFEKSEER_CRITICALSESSION_H__
-
-#ifndef	__EFFEKSEER_THREAD_H__
-#define	__EFFEKSEER_THREAD_H__
-
-//----------------------------------------------------------------------------------
-// Include
-//----------------------------------------------------------------------------------
-
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
-namespace Effekseer { 
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
-	
-class Thread
-{
-private:
-#ifdef _WIN32
-	/* DWORDを置きかえ */
-	static unsigned long EFK_STDCALL ThreadProc(void* arguments);
-#elif defined(_PSVITA) || defined(_PS4) || defined(_SWITCH) || defined(_XBOXONE)
-
-#else
-	static void* ThreadProc( void* arguments );
-#endif
-
-private:
-#ifdef _WIN32
-	HANDLE m_thread;
-#elif defined(_PSVITA) || defined(_PS4) || defined(_SWITCH) || defined(_XBOXONE)
-
-#else
-	pthread_t m_thread;
-	bool m_running;
-#endif
-
-	void* m_data;
-	void (*m_mainProc)( void* );
-	CriticalSection m_cs;
-
-public:
-
-	Thread();
-	~Thread();
-
-
-	/**
-		@brief スレッドを生成する。
-		@param threadFunc	[in] スレッド関数
-		@param pData		[in] スレッドに引き渡すデータポインタ
-		@return	成否
-	*/
-	bool Create( void (*threadFunc)( void* ), void* data );
-
-	/**
-		@brief スレッド終了を確認する。
-	*/
-	bool IsExitThread() const;
-
-	/**
-		@brief スレッド終了を待つ。
-	*/
-	bool Wait() const;
-};
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
- } 
-//----------------------------------------------------------------------------------
-//
-//----------------------------------------------------------------------------------
-#endif	// __EFFEKSEER_VECTOR3D_H__
